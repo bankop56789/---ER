@@ -1,0 +1,1068 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ER Shift Handover - โรงพยาบาลยางชุมน้อย</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Sarabun', sans-serif; }
+    html { font-size: 17px; }
+    body { background-color: #f1f5f9; font-size: 1rem; line-height: 1.65; }
+    .gradient-header { background: linear-gradient(135deg,#0c4a6e 0%,#0369a1 100%); }
+
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+
+    .table-input { width:100%; max-width:72px; border:1.5px solid #cbd5e1; border-radius:8px; text-align:center; padding:7px 2px; font-weight:800; font-size:1.25rem; color:#075985; transition:all 0.2s; background:white; }
+    .table-input:focus { border-color:#0284c7; box-shadow:0 0 0 3px rgba(2,132,199,.15); background:#f0f9ff; outline:none; }
+
+    .triage-tag { display:inline-flex; align-items:center; justify-content:center; min-width:120px; padding:6px 12px; border-radius:999px; font-weight:800; font-size:.97rem; text-align:center; border:2px solid transparent; }
+    .triage-red    { background:#dc2626; color:white; border-color:#b91c1c; }
+    .triage-pink   { background:#db2777; color:white; border-color:#be185d; }
+    .triage-yellow { background:#fbbf24; color:#78350f; border-color:#d97706; }
+    .triage-green  { background:#22c55e; color:white; border-color:#15803d; }
+    .triage-white  { background:white; color:#475569; border-color:#cbd5e1; }
+    .triage-indigo { background:#eef2ff; color:#4338ca; border-color:#a5b4fc; }
+    .triage-orange { background:#fff7ed; color:#c2410c; border-color:#fdba74; }
+    .triage-slate  { background:#1e293b; color:white; border-color:#0f172a; }
+    .triage-mini   { font-size:.84rem !important; min-width:96px; padding:4px 8px; }
+
+    @keyframes pulse-red  { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.6)} 50%{box-shadow:0 0 0 10px rgba(220,38,38,0)} }
+    @keyframes pulse-blue { 0%,100%{box-shadow:0 0 0 0 rgba(37,99,235,.6)} 50%{box-shadow:0 0 0 10px rgba(37,99,235,0)} }
+    @keyframes fadeInUp   { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeIn     { from{opacity:0} to{opacity:1} }
+    @keyframes spin       { to{transform:rotate(360deg)} }
+
+    .pulse-cpr     { animation:pulse-red  1.8s infinite; }
+    .pulse-telemed { animation:pulse-blue 1.8s infinite; }
+    .spinner { animation:spin 1s linear infinite; border:3px solid #e2e8f0; border-top-color:#0369a1; border-radius:50%; width:20px; height:20px; display:inline-block; vertical-align:middle; }
+
+    .void-card::before { content:''; position:absolute; inset:0; background:repeating-linear-gradient(-45deg,transparent,transparent 18px,rgba(220,38,38,.08) 18px,rgba(220,38,38,.08) 20px); border-radius:16px; pointer-events:none; z-index:1; }
+    .void-card::after  { content:''; position:absolute; inset:0; border:2.5px solid rgba(220,38,38,.35); border-radius:16px; pointer-events:none; z-index:1; }
+
+    .modal-overlay { background:rgba(15,23,42,.65); backdrop-filter:blur(4px); display:none; }
+    .modal-overlay.active { display:flex; }
+
+    .card      { background:white; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,.06); border:1px solid #e2e8f0; }
+    .stat-card { background:white; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,.06); padding:22px; }
+    .stat-card p  { font-size:.82rem !important; letter-spacing:.05em; }
+    .stat-card h3 { font-size:3.4rem !important; line-height:1.1; }
+
+    .staff-select { width:100%; padding:12px 16px; border:1.5px solid #e2e8f0; border-radius:10px; background:white; font-size:1.05rem; font-weight:600; color:#1e293b; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; background-size:18px; }
+    .staff-select:focus { border-color:#3b82f6; outline:none; }
+    .staff-input { width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px; font-size:1rem; margin-top:8px; background:#f8fafc; }
+    .staff-input:focus { background:white; border-color:#3b82f6; outline:none; }
+
+    table { font-size:1rem; }
+    table thead th { font-size:.84rem !important; letter-spacing:.04em; padding-top:11px !important; padding-bottom:11px !important; }
+    table tbody td { font-size:1rem !important; padding-top:10px !important; padding-bottom:10px !important; }
+    table tfoot td { font-size:1rem !important; }
+    .nav-btn { font-size:1.05rem !important; padding-top:15px !important; padding-bottom:15px !important; }
+
+    /* LOGIN */
+    #login-screen { position:fixed; inset:0; z-index:9999; background:linear-gradient(135deg,#0c4a6e 0%,#0369a1 60%,#0ea5e9 100%); display:flex; align-items:center; justify-content:center; animation:fadeIn .4s ease; }
+    #login-screen.gone { display:none; }
+    .login-card { background:rgba(255,255,255,.97); border-radius:24px; padding:40px 36px; width:100%; max-width:420px; box-shadow:0 24px 60px rgba(0,0,0,.25); animation:fadeInUp .5s ease; }
+    .login-input { width:100%; padding:13px 16px; border:2px solid #e2e8f0; border-radius:12px; font-size:1rem; font-weight:600; outline:none; transition:all .2s; background:#f8fafc; }
+    .login-input:focus { border-color:#0369a1; background:white; box-shadow:0 0 0 3px rgba(3,105,161,.12); }
+
+    .user-badge { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); border-radius:12px; padding:6px 12px; }
+    .logger-badge { display:inline-flex; align-items:center; gap:4px; background:#f0f9ff; border:1px solid #bae6fd; color:#0369a1; border-radius:8px; padding:2px 8px; font-size:.75rem; font-weight:700; }
+    .admin-input { width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px; font-size:.95rem; font-weight:600; outline:none; background:white; }
+    .admin-input:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+
+    /* role chip */
+    .chip-admin { background:#fef3c7; color:#92400e; border:1px solid #fcd34d; border-radius:8px; padding:2px 8px; font-size:.72rem; font-weight:800; }
+    .chip-user  { background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:8px; padding:2px 8px; font-size:.72rem; font-weight:800; }
+
+    @media print {
+      body { background:white !important; font-size:11pt; }
+      .no-print { display:none !important; }
+      header, nav, .bg-blue-50 { display:none !important; }
+      .tab-content { display:none !important; }
+      main { padding:0 !important; overflow:visible !important; }
+      #login-screen { display:none !important; }
+    }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+<!-- ══════════════ LOGIN SCREEN ══════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+
+    <!-- Setup URL banner (ก่อนตั้งค่า Sheets) -->
+    <div id="setup-banner" class="hidden mb-5 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+      <p class="font-black text-amber-800 text-sm mb-2">⚙️ ยังไม่ได้ตั้งค่า Google Sheets URL</p>
+      <div class="flex gap-2">
+        <input id="setup-url-input" type="text" class="flex-1 border-2 border-amber-200 rounded-xl px-3 py-2 text-xs font-mono outline-none focus:border-amber-400" placeholder="https://script.google.com/macros/s/.../exec">
+        <button onclick="saveSetupUrl()" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl text-xs font-black whitespace-nowrap">บันทึก</button>
+      </div>
+      <p class="text-xs text-amber-600 mt-2 font-semibold">💡 ใช้บัญชี Emergency offline ได้เสมอ: <strong>admin / 1234</strong></p>
+    </div>
+
+    <div class="text-center mb-7">
+      <div class="w-16 h-16 bg-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+        <svg class="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/></svg>
+      </div>
+      <h1 class="text-2xl font-black text-slate-800">ระบบรับ-ส่งเวร ER</h1>
+      <p class="text-slate-500 font-semibold text-sm mt-1">โรงพยาบาลยางชุมน้อย</p>
+    </div>
+
+    <div class="space-y-4">
+      <div>
+        <label class="text-xs font-black text-slate-500 uppercase block mb-1.5">👤 Username</label>
+        <input id="login-username" type="text" class="login-input" placeholder="ระบุ username" autocomplete="username"
+          onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+      </div>
+      <div>
+        <label class="text-xs font-black text-slate-500 uppercase block mb-1.5">🔒 รหัสผ่าน</label>
+        <input id="login-password" type="password" class="login-input" placeholder="รหัสผ่าน 4-6 หลัก" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <p id="login-error" class="text-red-500 text-sm font-bold hidden"></p>
+      <button id="login-btn" onclick="doLogin()"
+        class="w-full bg-blue-700 hover:bg-blue-800 text-white py-3.5 rounded-2xl font-black text-base shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+        เข้าสู่ระบบ
+      </button>
+    </div>
+
+    <p class="text-center text-xs text-slate-400 font-bold mt-6">ติดต่อ Admin หากลืมรหัสผ่านหรือยังไม่มีบัญชี</p>
+  </div>
+</div>
+
+<!-- ══════════════ MAIN APP ══════════════ -->
+<div id="main-app" class="gone h-screen flex flex-col overflow-hidden">
+
+<!-- Header -->
+<div class="sticky top-0 z-40">
+  <header class="gradient-header px-5 py-3">
+    <div class="max-w-[1800px] mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <div class="bg-white/20 p-2 rounded-xl">
+          <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/></svg>
+        </div>
+        <div>
+          <h1 class="text-xl md:text-2xl font-black text-white">ระบบรับ-ส่งเวรห้องฉุกเฉิน</h1>
+          <p class="text-sm text-blue-200 font-semibold">โรงพยาบาลยางชุมน้อย — ER Handover System</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 flex-wrap justify-end">
+        <!-- User badge: แสดงชื่อ-นามสกุลเต็ม -->
+        <div class="user-badge no-print">
+          <div id="user-avatar" class="w-8 h-8 bg-white/30 rounded-full flex items-center justify-center text-white font-black text-sm">?</div>
+          <div>
+            <div id="user-fullname" class="text-white font-black text-sm leading-tight">—</div>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span id="sheets-dot" class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>
+              <span id="user-role-label" class="text-blue-200 text-xs font-bold">—</span>
+            </div>
+          </div>
+        </div>
+        <button onclick="exportExcel()" class="no-print bg-emerald-500/80 hover:bg-emerald-400 border border-emerald-300/50 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all">📊 Export</button>
+        <button onclick="printReport()"  class="no-print bg-white/10 hover:bg-white/20 border border-white/30 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all">🖨️ พิมพ์</button>
+        <div class="bg-white/10 px-4 py-2 rounded-xl border border-white/20">
+          <span id="live-clock" class="text-2xl font-mono font-black text-white">00:00:00</span>
+        </div>
+        <button onclick="doLogout()" class="no-print bg-red-500/70 hover:bg-red-500 border border-red-300/50 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all">🚪 ออก</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Nav — tabs shown/hidden by role -->
+  <nav class="bg-white border-b border-slate-200 px-5 overflow-x-auto shadow-sm no-print">
+    <div class="max-w-[1800px] mx-auto flex gap-1 whitespace-nowrap">
+      <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn px-5 py-3.5 font-bold text-sm border-b-4">📊 หน้าหลัก &amp; ส่งเวร</button>
+      <button onclick="switchTab('staff')"     id="nav-staff"     class="nav-btn px-5 py-3.5 font-bold text-sm border-b-4">👥 ผู้ปฏิบัติงาน</button>
+      <button onclick="switchTab('history')"   id="nav-history"   class="nav-btn px-5 py-3.5 font-bold text-sm border-b-4">📜 ประวัติส่งเวร</button>
+      <button onclick="switchTab('reports')"   id="nav-reports"   class="nav-btn px-5 py-3.5 font-bold text-sm border-b-4">📈 สถิติ</button>
+      <!-- Admin only -->
+      <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn px-5 py-3.5 font-bold text-sm border-b-4 hidden">⚙️ จัดการผู้ใช้</button>
+    </div>
+  </nav>
+
+  <!-- Date / Shift / Sheets bar -->
+  <div class="bg-blue-50 border-b border-blue-100 py-2 px-5 no-print">
+    <div class="max-w-[1800px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-2">
+      <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-blue-200">
+        <span class="text-slate-500 font-black text-sm">📅 วันที่:</span>
+        <input type="date" id="global-date" class="flex-1 border-none focus:ring-0 font-extrabold text-base bg-transparent text-blue-900">
+      </div>
+      <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-blue-200">
+        <span class="text-slate-500 font-black text-sm">🕒 เวร:</span>
+        <select id="global-shift" class="flex-1 border-none focus:ring-0 font-extrabold text-base cursor-pointer bg-transparent text-blue-900">
+          <option value="เวรเช้า">🌅 เวรเช้า (08:00-16:00)</option>
+          <option value="เวรบ่าย">🌤️ เวรบ่าย (16:00-24:00)</option>
+          <option value="เวรดึก">🌙 เวรดึก (00:00-08:00)</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-sm border border-green-200 cursor-pointer" onclick="toggleSheetsPanel()">
+        <span id="sheets-status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0"></span>
+        <span class="text-slate-500 font-black text-sm flex-shrink-0">📊 Sheets:</span>
+        <span id="sheets-status-text" class="text-slate-400 font-bold text-sm truncate">ยังไม่ตั้งค่า — คลิกเพื่อตั้งค่า</span>
+      </div>
+    </div>
+    <div id="sheets-panel" class="hidden max-w-[1800px] mx-auto mt-2">
+      <div class="bg-white border border-green-200 rounded-xl p-4 shadow-sm flex flex-wrap gap-2 items-center">
+        <input id="sheets-url-input" type="text" class="flex-1 min-w-0 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-mono focus:border-green-400 outline-none" placeholder="https://script.google.com/macros/s/XXXX/exec">
+        <button onclick="saveSheetUrl()"      class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-black transition-all">💾 บันทึก</button>
+        <button onclick="testSheetConn()"     class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-black transition-all">🧪 ทดสอบ</button>
+        <button onclick="toggleSheetsPanel()" class="text-slate-400 hover:text-slate-600 font-bold text-lg px-2">✕</button>
+        <p id="sheets-test-msg" class="w-full text-xs font-bold hidden"></p>
+      </div>
+    </div>
+  </div>
+</div><!-- /sticky -->
+
+<main class="flex-1 overflow-y-auto p-4 md:p-6">
+<div class="max-w-[1800px] mx-auto space-y-6">
+
+<!-- ── DASHBOARD ── -->
+<section id="tab-dashboard" class="tab-content space-y-6">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="stat-card border-t-4 border-blue-500"><p class="text-slate-400 font-black text-sm uppercase tracking-widest mb-1">ยอดผู้ป่วย ER</p><h3 id="stat-er"    class="font-black text-blue-700">0</h3></div>
+    <div class="stat-card border-t-4 border-emerald-500"><p class="text-slate-400 font-black text-sm uppercase tracking-widest mb-1">ยอดผู้ป่วย EMS</p><h3 id="stat-ems"  class="font-black text-emerald-600">0</h3></div>
+    <div class="stat-card border-t-4 border-indigo-500"><p class="text-slate-400 font-black text-sm uppercase tracking-widest mb-1">Admit (Walk-in)</p><h3 id="stat-admit" class="font-black text-indigo-700">0</h3></div>
+    <div class="stat-card border-t-4 border-orange-500"><p class="text-slate-400 font-black text-sm uppercase tracking-widest mb-1">Refer (Walk-in)</p><h3 id="stat-refer" class="font-black text-orange-600">0</h3></div>
+  </div>
+
+  <div class="flex flex-col lg:flex-row gap-5 items-start">
+    <div class="w-full lg:w-[38%] card overflow-hidden">
+      <div class="bg-blue-700 px-4 py-3 text-white"><h3 class="font-black text-base">🏥 สรุปผู้ป่วย Walk-in</h3></div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead class="bg-slate-50 border-b border-slate-100"><tr class="text-slate-500 font-black text-xs uppercase"><th class="px-4 py-2">ประเภทคัดกรอง</th><th class="px-1 py-2 text-center">T</th><th class="px-1 py-2 text-center">N</th><th class="px-4 py-2 text-right bg-slate-100/60">รวม</th></tr></thead>
+          <tbody id="er-table-body" class="divide-y divide-slate-100"></tbody>
+          <tfoot><tr class="bg-blue-50 border-t-2 border-blue-200"><td class="px-4 py-2 font-black text-blue-800 text-base">รวมทั้งหมด</td><td id="er-foot-t" class="px-1 py-2 text-center font-black text-blue-700"></td><td id="er-foot-n" class="px-1 py-2 text-center font-black text-blue-700"></td><td id="er-foot-total" class="px-4 py-2 text-right font-black text-blue-800 text-lg"></td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="w-full lg:w-[62%] card overflow-hidden">
+      <div class="bg-emerald-700 px-4 py-3 text-white"><h3 class="font-black text-base">🚑 สถิติผู้ป่วย EMS</h3></div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-black text-xs uppercase">
+            <tr><th rowspan="2" class="px-4 py-2 align-middle border-r border-slate-200">ประเภทคัดกรอง</th><th colspan="2" class="py-1 text-center border-b border-slate-200 bg-emerald-50/50">ลักษณะ</th><th colspan="3" class="py-1 text-center border-b border-slate-200 bg-blue-50/50">ระดับบริการ</th><th rowspan="2" class="px-3 py-2 text-right align-middle bg-slate-100/50">รวม</th></tr>
+            <tr class="bg-slate-50/30"><th class="px-1 py-1 text-center border-r border-slate-100">T</th><th class="px-1 py-1 text-center border-r border-slate-200">N</th><th class="px-1 py-1 text-center border-r border-slate-100">ALS</th><th class="px-1 py-1 text-center border-r border-slate-100">BLS</th><th class="px-1 py-1 text-center border-r border-slate-200">FR</th></tr>
+          </thead>
+          <tbody id="ems-table-body" class="divide-y divide-slate-100"></tbody>
+          <tfoot><tr class="bg-emerald-50 border-t-2 border-emerald-200"><td class="px-4 py-2 font-black text-emerald-800 text-base border-r border-slate-200">รวมทั้งหมด</td><td id="ems-foot-t" class="px-1 py-2 text-center font-black text-emerald-700"></td><td id="ems-foot-n" class="px-1 py-2 text-center font-black text-emerald-700 border-r border-slate-200"></td><td id="ems-foot-als" class="px-1 py-2 text-center font-black text-emerald-700"></td><td id="ems-foot-bls" class="px-1 py-2 text-center font-black text-emerald-700"></td><td id="ems-foot-fr" class="px-1 py-2 text-center font-black text-emerald-700 border-r border-slate-200"></td><td id="ems-foot-total" class="px-3 py-2 text-right font-black text-emerald-800 text-lg bg-slate-100/50"></td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Patient list -->
+  <div class="space-y-3">
+    <div class="flex justify-between items-center bg-white p-4 rounded-2xl border border-blue-100 shadow-sm">
+      <h3 class="font-black text-xl text-slate-800">📋 รายชื่อผู้ป่วย Handover</h3>
+      <button onclick="openPatientModal()" class="bg-blue-700 hover:bg-blue-800 text-white px-5 py-2.5 rounded-xl text-base font-black shadow transition-all">➕ เพิ่มผู้ป่วย</button>
+    </div>
+    <div class="card overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm border-collapse">
+          <thead class="bg-slate-100 border-b border-slate-200 text-slate-600 font-black uppercase text-xs">
+            <tr><th class="px-4 py-3 border-r">HN / เพศ</th><th class="px-4 py-3 border-r">สถานะ</th><th class="px-4 py-3 border-r">วินิจฉัย</th><th class="px-4 py-3 border-r text-red-600">ผลวิกฤต/LAB</th><th class="px-4 py-3 border-r text-blue-700">แผนการรักษา</th><th class="px-4 py-3 border-r text-red-600">หมายเหตุ</th><th class="px-4 py-3 text-center no-print">จัดการ</th></tr>
+          </thead>
+          <tbody id="patient-table-body" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Staff summary -->
+  <div class="space-y-3">
+    <div class="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+      <h3 class="font-black text-xl text-slate-800">👥 สรุปเจ้าหน้าที่ประจำเวร</h3>
+      <button onclick="switchTab('staff')" class="text-slate-500 hover:text-blue-700 text-base font-bold px-4 py-2.5 border border-slate-200 rounded-xl hover:border-blue-300 transition-all">✏️ แก้ไข</button>
+    </div>
+    <div class="card p-5"><div id="staff-summary-content"><p class="text-slate-400 italic text-sm text-center py-4">— ยังไม่มีข้อมูลเจ้าหน้าที่ —</p></div></div>
+  </div>
+
+  <div class="flex justify-center pt-2 pb-6">
+    <button onclick="saveCurrentShift()" class="bg-blue-800 hover:bg-blue-900 text-white px-10 py-4 rounded-2xl font-black text-xl shadow-xl flex items-center gap-3 transition-all active:scale-95">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+      บันทึกสรุปยอดเวร
+    </button>
+  </div>
+</section>
+
+<!-- ── STAFF ── -->
+<section id="tab-staff" class="tab-content space-y-5">
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+    <div class="lg:col-span-8 space-y-5">
+      <div class="card p-5"><div class="text-base font-black text-blue-800 border-l-4 border-blue-600 pl-3 mb-4">🩺 1. แพทย์เวร</div><select id="s-doctor" class="staff-select"></select></div>
+      <div class="card p-5 border-t-4 border-emerald-500">
+        <div class="text-base font-black text-emerald-800 border-l-4 border-emerald-600 pl-3 mb-4 flex justify-between"><span>👩‍⚕️ ทีมพยาบาลประจำจุด (ER)</span></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="space-y-3">
+            <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">2. หัวหน้าเวร</label><select id="s-head" class="staff-select nurse-pool"></select><input type="text" id="s-head-other" class="staff-input" placeholder="ระบุชื่อเพิ่มเติม..."></div>
+            <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">3. Member 1</label><select id="s-m1" class="staff-select nurse-pool"></select><input type="text" id="s-m1-other" class="staff-input" placeholder="ระบุชื่อเพิ่มเติม..."></div>
+          </div>
+          <div class="space-y-3">
+            <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">4. Member 2</label><select id="s-m2" class="staff-select nurse-pool"></select><input type="text" id="s-m2-other" class="staff-input" placeholder="ระบุชื่อเพิ่มเติม..."></div>
+            <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">5. Member 3</label><select id="s-m3" class="staff-select nurse-pool"></select><input type="text" id="s-m3-other" class="staff-input" placeholder="ระบุชื่อเพิ่มเติม..."></div>
+          </div>
+        </div>
+      </div>
+      <div class="card p-5 border-t-4 border-amber-500">
+        <div class="text-base font-black text-amber-800 border-l-4 border-amber-600 pl-3 mb-4">🔁 ทีมพยาบาล Refer</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">8. พยาบาล Refer 1</label><select id="s-ref1" class="staff-select refer-pool"></select></div>
+          <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">9. พยาบาล Refer 2</label><select id="s-ref2" class="staff-select refer-pool"></select></div>
+        </div>
+      </div>
+    </div>
+    <div class="lg:col-span-4 space-y-5">
+      <div class="card p-5"><div class="text-base font-black text-slate-700 border-l-4 border-slate-500 pl-3 mb-3">🚑 6. EMT (กู้ชีพ)</div><select id="s-emt" class="staff-select"></select><input type="text" id="s-emt-other" class="staff-input" placeholder="ระบุชื่อ EMT อื่นๆ..."></div>
+      <div class="card p-5"><div class="text-base font-black text-slate-700 border-l-4 border-slate-500 pl-3 mb-3">🤝 7. NA (ประจำเวร)</div><select id="s-na" class="staff-select na-pool"></select><input type="text" id="s-na-other" class="staff-input" placeholder="ระบุชื่อ NA อื่นๆ..."></div>
+      <div class="card p-5"><div class="text-base font-black text-amber-700 border-l-4 border-amber-500 pl-3 mb-3">🔄 10. NA Refer</div><select id="s-na-ref" class="staff-select na-pool"></select><input type="text" id="s-na-ref-other" class="staff-input" placeholder="ระบุชื่อ NA Refer อื่นๆ..."></div>
+      <div class="card p-5 border-t-4 border-indigo-500"><div class="text-base font-black text-indigo-800 border-l-4 border-indigo-600 pl-3 mb-3">📑 11. เวรนิเทศ</div><select id="s-super" class="staff-select"></select></div>
+    </div>
+  </div>
+  <div class="flex justify-center pb-10">
+    <button onclick="saveStaff()" class="bg-slate-900 hover:bg-black text-white px-12 py-4 rounded-2xl font-black text-lg shadow-xl transition-all active:scale-95">✅ ยืนยันและบันทึกข้อมูลเจ้าหน้าที่</button>
+  </div>
+</section>
+
+<!-- ── HISTORY (User: ดูได้ ลบไม่ได้ | Admin: ครบ) ── -->
+<section id="tab-history" class="tab-content pb-10">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-2xl font-black text-slate-800">📜 ประวัติการส่งเวร</h2>
+    <!-- แสดงเฉพาะ Admin -->
+    <button id="btn-clear-history" onclick="clearHistory()" class="hidden text-red-400 hover:text-red-600 text-sm font-bold transition-colors">🗑️ ลบประวัติทั้งหมด</button>
+  </div>
+  <div id="history-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+</section>
+
+<!-- ── REPORTS ── -->
+<section id="tab-reports" class="tab-content pb-10 space-y-6">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+    <div class="flex flex-wrap items-end gap-4">
+      <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">📅 ปี</label><select id="filter-year" onchange="renderReports()" class="border-2 border-slate-200 rounded-xl px-4 py-2 font-bold text-base focus:border-blue-400 outline-none bg-white"></select></div>
+      <div>
+        <label class="text-xs font-black text-slate-500 uppercase block mb-1">🗓️ เดือน</label>
+        <select id="filter-month" onchange="renderReports()" class="border-2 border-slate-200 rounded-xl px-4 py-2 font-bold text-base focus:border-blue-400 outline-none bg-white">
+          <option value="all">— ทั้งปี —</option>
+          <option value="01">มกราคม</option><option value="02">กุมภาพันธ์</option><option value="03">มีนาคม</option><option value="04">เมษายน</option>
+          <option value="05">พฤษภาคม</option><option value="06">มิถุนายน</option><option value="07">กรกฎาคม</option><option value="08">สิงหาคม</option>
+          <option value="09">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+        </select>
+      </div>
+      <div class="flex gap-2 ml-auto flex-wrap">
+        <button onclick="exportMonthlyExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl font-black text-sm transition-all">📊 Export Excel</button>
+      </div>
+    </div>
+  </div>
+  <div id="report-summary-cards" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="bg-slate-700 px-5 py-3 text-white font-black text-base">📋 ตารางสรุปรายเวร</div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 border-b border-slate-200">
+          <tr class="text-slate-500 font-black text-xs uppercase">
+            <th class="px-4 py-3 text-left">วันที่</th><th class="px-4 py-3 text-left">เวร</th>
+            <th class="px-4 py-3 text-center text-blue-600">ER</th><th class="px-4 py-3 text-center text-emerald-600">EMS</th>
+            <th class="px-4 py-3 text-center text-indigo-600">Admit</th><th class="px-4 py-3 text-center text-orange-600">Refer</th>
+            <th class="px-4 py-3 text-center">ส่งเวร</th><th class="px-4 py-3 text-center">รวม</th>
+            <th class="px-4 py-3 text-center text-sky-600">บันทึกโดย</th>
+          </tr>
+        </thead>
+        <tbody id="report-table-body" class="divide-y divide-slate-100"></tbody>
+        <tfoot id="report-table-foot"></tfoot>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── ADMIN (Admin only) ── -->
+<section id="tab-admin" class="tab-content pb-10 space-y-6">
+  <div class="flex justify-between items-center">
+    <h2 class="text-2xl font-black text-slate-800">⚙️ จัดการบัญชีผู้ใช้</h2>
+    <button onclick="openUserModal()" class="bg-blue-700 hover:bg-blue-800 text-white px-5 py-2.5 rounded-xl font-black shadow transition-all">➕ เพิ่มผู้ใช้</button>
+  </div>
+
+  <!-- info bar -->
+  <div id="admin-info-bar" class="hidden bg-blue-50 border border-blue-200 rounded-2xl p-4 text-sm font-semibold text-blue-700">
+    ℹ️ ข้อมูลผู้ใช้เก็บใน Google Sheets (Sheet: Users) — sync ทุกครั้งที่เข้า Tab นี้
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="bg-blue-700 px-5 py-3 text-white font-black text-base flex items-center justify-between">
+      <span>👥 รายชื่อผู้ใช้ทั้งหมด</span>
+      <button onclick="loadUsers()" class="text-blue-200 hover:text-white text-xs font-bold px-3 py-1 border border-blue-400 rounded-lg">🔄 รีโหลด</button>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 border-b border-slate-200">
+          <tr class="text-slate-500 font-black text-xs uppercase">
+            <th class="px-4 py-3 text-left">Username</th><th class="px-4 py-3 text-left">ชื่อ-นามสกุล</th>
+            <th class="px-4 py-3 text-center">Role</th><th class="px-4 py-3 text-center">สถานะ</th>
+            <th class="px-4 py-3 text-center">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="user-table-body" class="divide-y divide-slate-100"><tr><td colspan="5" class="py-8 text-center text-slate-400 font-bold">กด "รีโหลด" เพื่อดูรายชื่อ</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <div class="bg-slate-700 px-5 py-3 text-white font-black text-base flex justify-between items-center">
+      <span>📋 บันทึกกิจกรรม</span>
+      <button onclick="loadActivityLog()" class="text-slate-300 hover:text-white text-xs font-bold px-3 py-1 border border-slate-500 rounded-lg">🔄 โหลด</button>
+    </div>
+    <div id="activity-log-container" class="max-h-80 overflow-y-auto divide-y divide-slate-100">
+      <div class="p-6 text-center text-slate-400 font-bold">กด "โหลด" เพื่อดูบันทึกกิจกรรม</div>
+    </div>
+  </div>
+</section>
+
+</div>
+</main>
+</div><!-- /main-app -->
+
+<!-- ══════════════ MODALS ══════════════ -->
+
+<!-- Patient -->
+<div id="patient-modal" class="modal-overlay fixed inset-0 z-50 items-center justify-center p-4">
+  <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
+    <div class="bg-blue-700 px-6 py-4 flex justify-between items-center text-white">
+      <h3 class="font-black text-xl" id="modal-title">ข้อมูลผู้ป่วยส่งเวร</h3>
+      <button onclick="closePatientModal()" class="text-white hover:text-red-200 text-3xl font-bold leading-none">&times;</button>
+    </div>
+    <div class="overflow-y-auto p-5 space-y-4">
+      <div class="flex gap-2">
+        <button onclick="applyCPR()"    class="pulse-cpr     bg-red-600  hover:bg-red-700  text-white px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2"><span class="w-2 h-2 bg-white rounded-full animate-ping inline-block"></span> CPR ACTIVE</button>
+        <button onclick="applyTelemed()" class="pulse-telemed bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2"><span class="w-2 h-2 bg-white rounded-full animate-ping inline-block"></span> 📱 TELEMED</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">HN *</label><input type="text" id="form-hn" class="w-full border-2 border-slate-200 p-3 rounded-xl focus:border-blue-500 font-bold text-lg outline-none" placeholder="ระบุ HN"></div>
+        <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">เพศ</label><select id="form-gender" class="w-full border-2 border-slate-200 p-3 rounded-xl focus:border-blue-500 font-bold text-base outline-none"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
+        <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">สถานะเคส</label><select id="form-status" class="w-full border-2 border-slate-200 p-3 rounded-xl focus:border-blue-500 font-black text-base outline-none"><option value="Pending">🟡 รอผล (Pending)</option><option value="Admit">🏥 Admit</option><option value="Refer">🔁 Refer</option><option value="Obs">🟢 ดูอาการ (Obs)</option></select></div>
+        <div class="md:col-span-2"><label class="text-xs font-black text-slate-500 uppercase block mb-1">วินิจฉัย *</label><input type="text" id="form-dx" class="w-full border-2 border-slate-200 p-3 rounded-xl focus:border-blue-500 font-bold text-base outline-none" placeholder="ระบุการวินิจฉัย"></div>
+        <div class="md:col-span-2"><label class="text-xs font-black text-red-600 uppercase block mb-1">ผล LAB / V/S วิกฤต</label><textarea id="form-abnormal" rows="2" class="w-full border-2 border-red-100 p-3 rounded-xl focus:border-red-400 font-bold text-sm text-red-700 bg-red-50/30 outline-none"></textarea></div>
+        <div class="md:col-span-2"><label class="text-xs font-black text-blue-700 uppercase block mb-1">งานค้าง / แผนการรักษา</label><textarea id="form-todo" rows="2" class="w-full border-2 border-blue-100 p-3 rounded-xl focus:border-blue-400 font-bold text-sm text-blue-800 bg-blue-50/20 outline-none"></textarea></div>
+        <div class="md:col-span-2"><label class="text-xs font-black text-red-600 uppercase block mb-1">⚠️ หมายเหตุพิเศษ</label><input type="text" id="form-remark" class="w-full border-2 border-red-100 p-3 rounded-xl focus:border-red-400 font-black text-base text-red-700 outline-none"></div>
+      </div>
+    </div>
+    <div class="bg-slate-50 p-4 border-t flex justify-between"><button onclick="closePatientModal()" class="px-5 py-2.5 rounded-xl font-black text-slate-500 hover:bg-slate-200 transition-colors">ปิด</button><button onclick="savePatient()" class="bg-blue-700 text-white px-8 py-2.5 rounded-xl font-black shadow hover:bg-blue-800 transition-colors">💾 บันทึก</button></div>
+  </div>
+</div>
+
+<!-- Void -->
+<div id="void-modal" class="modal-overlay fixed inset-0 z-50 items-center justify-center p-4">
+  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
+    <div class="bg-red-600 px-6 py-4 flex justify-between items-center text-white"><h3 class="font-black text-lg">🗑️ ยืนยันการลบ</h3><button onclick="closeVoidModal()" class="text-white hover:text-red-200 text-3xl font-bold leading-none">&times;</button></div>
+    <div class="p-6 space-y-4">
+      <div class="bg-red-50 border border-red-200 rounded-xl p-4"><p class="text-red-700 font-bold text-sm">⚠️ ข้อมูลจะถูกทำเครื่องหมาย OFF — สามารถกู้คืนได้ภายหลัง</p></div>
+      <div><label class="text-xs font-black text-slate-600 uppercase block mb-2">📝 เหตุผล <span class="text-red-500">*</span></label><textarea id="void-reason-input" rows="3" class="w-full border-2 border-slate-200 p-3 rounded-xl focus:border-red-400 font-bold text-sm outline-none resize-none" placeholder="กรุณาระบุเหตุผล..."></textarea><p id="void-reason-error" class="text-red-500 text-xs font-black mt-1 hidden">⚠️ กรุณาระบุเหตุผลก่อนยืนยัน</p></div>
+    </div>
+    <div class="bg-slate-50 px-6 py-4 border-t flex justify-between"><button onclick="closeVoidModal()" class="px-5 py-2.5 rounded-xl font-black text-slate-500 hover:bg-slate-200 transition-colors">ยกเลิก</button><button onclick="confirmVoid()" class="bg-red-600 hover:bg-red-700 text-white px-8 py-2.5 rounded-xl font-black shadow transition-colors">⛔ ยืนยัน</button></div>
+  </div>
+</div>
+
+<!-- Edit History -->
+<div id="edit-history-modal" class="modal-overlay fixed inset-0 z-50 items-center justify-center p-4">
+  <div class="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
+    <div class="bg-emerald-700 px-6 py-4 flex justify-between items-center text-white"><h3 class="font-black text-lg">✏️ แก้ไขประวัติส่งเวร</h3><button onclick="closeEditHistoryModal()" class="text-white hover:text-red-200 text-3xl font-bold leading-none">&times;</button></div>
+    <div class="overflow-y-auto p-5 space-y-5">
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">📅 วันที่</label><input type="date" id="eh-date" class="w-full border-2 border-slate-200 p-3 rounded-xl focus:border-emerald-500 font-bold text-base outline-none"></div>
+        <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">🕒 เวร</label><select id="eh-shift" class="w-full border-2 border-slate-200 p-3 rounded-xl focus:border-emerald-500 font-bold text-base outline-none"><option value="เวรเช้า">🌅 เวรเช้า</option><option value="เวรบ่าย">🌤️ เวรบ่าย</option><option value="เวรดึก">🌙 เวรดึก</option></select></div>
+      </div>
+      <div>
+        <div class="text-xs font-black text-slate-500 uppercase border-l-4 border-blue-500 pl-3 mb-3">📊 สถิติ</div>
+        <div class="grid grid-cols-4 gap-3">
+          <div><label class="text-xs font-black text-blue-600 uppercase block mb-1">ER</label><input type="number" min="0" id="eh-er" class="w-full border-2 border-blue-100 p-3 rounded-xl focus:border-blue-400 font-black text-xl text-blue-700 text-center outline-none"></div>
+          <div><label class="text-xs font-black text-emerald-600 uppercase block mb-1">EMS</label><input type="number" min="0" id="eh-ems" class="w-full border-2 border-emerald-100 p-3 rounded-xl focus:border-emerald-400 font-black text-xl text-emerald-700 text-center outline-none"></div>
+          <div><label class="text-xs font-black text-indigo-600 uppercase block mb-1">Admit</label><input type="number" min="0" id="eh-admit" class="w-full border-2 border-indigo-100 p-3 rounded-xl focus:border-indigo-400 font-black text-xl text-indigo-700 text-center outline-none"></div>
+          <div><label class="text-xs font-black text-orange-600 uppercase block mb-1">Refer</label><input type="number" min="0" id="eh-refer" class="w-full border-2 border-orange-100 p-3 rounded-xl focus:border-orange-400 font-black text-xl text-orange-600 text-center outline-none"></div>
+        </div>
+      </div>
+      <div>
+        <div class="text-xs font-black text-slate-500 uppercase border-l-4 border-purple-500 pl-3 mb-3">👤 ผู้ป่วยส่งเวร</div>
+        <div id="eh-patients-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+        <button onclick="addEHPatient()" class="mt-2 text-xs font-black text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 px-3 py-1.5 rounded-xl transition-colors">➕ เพิ่มผู้ป่วย</button>
+      </div>
+      <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">📝 หมายเหตุการแก้ไข</label><input type="text" id="eh-note" placeholder="ระบุเหตุผล (ไม่บังคับ)" class="w-full border-2 border-slate-200 p-3 rounded-xl focus:border-emerald-400 font-bold text-sm outline-none"></div>
+    </div>
+    <div class="bg-slate-50 p-4 border-t flex justify-between"><button onclick="closeEditHistoryModal()" class="px-5 py-2.5 rounded-xl font-black text-slate-500 hover:bg-slate-200 transition-colors">ยกเลิก</button><button onclick="saveEditHistory()" class="bg-emerald-600 text-white px-8 py-2.5 rounded-xl font-black shadow hover:bg-emerald-700 transition-colors">💾 บันทึก</button></div>
+  </div>
+</div>
+
+<!-- User Modal (Admin) -->
+<div id="user-modal" class="modal-overlay fixed inset-0 z-50 items-center justify-center p-4">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden">
+    <div class="bg-indigo-700 px-6 py-4 flex justify-between items-center text-white">
+      <h3 class="font-black text-lg" id="user-modal-title">➕ เพิ่มบัญชีผู้ใช้</h3>
+      <button onclick="closeUserModal()" class="text-white hover:text-red-200 text-3xl font-bold leading-none">&times;</button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs font-black text-slate-500 uppercase block mb-1">👤 Username (ตัวย่อ)</label>
+          <input type="text" id="um-username" class="admin-input" placeholder="เช่น jid, som, pla">
+          <p class="text-xs text-slate-400 mt-1">ตัวอักษรอังกฤษ/ตัวเลข ไม่มีช่องว่าง</p>
+        </div>
+        <div>
+          <label class="text-xs font-black text-slate-500 uppercase block mb-1">🔒 รหัสผ่าน (4-6 หลัก)</label>
+          <input type="text" id="um-password" class="admin-input" placeholder="เช่น 1234" maxlength="6">
+          <p id="um-pw-hint" class="text-xs text-slate-400 mt-1 hidden">ว่างเปล่า = ไม่เปลี่ยน</p>
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-black text-slate-500 uppercase block mb-1">📛 ชื่อ-นามสกุล (จริง)</label>
+          <input type="text" id="um-fullname" class="admin-input" placeholder="เช่น น.ส.จิดาภา คงสิม">
+        </div>
+        <div>
+          <label class="text-xs font-black text-slate-500 uppercase block mb-1">🎭 Role</label>
+          <select id="um-role" class="admin-input"><option value="user">👤 User</option><option value="admin">👑 Admin</option></select>
+        </div>
+        <div>
+          <label class="text-xs font-black text-slate-500 uppercase block mb-1">สถานะ</label>
+          <select id="um-active" class="admin-input"><option value="1">✅ เปิดใช้งาน</option><option value="0">🚫 ปิดใช้งาน</option></select>
+        </div>
+      </div>
+      <p id="um-error" class="text-red-500 text-sm font-black hidden"></p>
+    </div>
+    <div class="bg-slate-50 px-6 py-4 border-t flex justify-between items-center gap-3">
+      <button onclick="closeUserModal()" class="px-5 py-2.5 rounded-xl font-black text-slate-500 hover:bg-slate-200 transition-colors">ยกเลิก</button>
+      <div class="flex items-center gap-3">
+        <span id="um-loading" class="hidden text-slate-400 text-sm">⏳ กำลังบันทึก...</span>
+        <button id="um-save-btn" onclick="saveUser()" class="bg-indigo-700 hover:bg-indigo-800 text-white px-8 py-2.5 rounded-xl font-black shadow transition-colors">💾 บันทึก</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reset PW Modal -->
+<div id="resetpw-modal" class="modal-overlay fixed inset-0 z-50 items-center justify-center p-4">
+  <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden">
+    <div class="bg-amber-600 px-6 py-4 flex justify-between items-center text-white"><h3 class="font-black text-lg">🔑 รีเซ็ตรหัสผ่าน</h3><button onclick="closeResetPw()" class="text-white text-3xl font-bold leading-none">&times;</button></div>
+    <div class="p-6 space-y-4">
+      <p class="text-sm font-bold text-slate-600">ผู้ใช้: <span id="rp-name" class="text-blue-700 font-black"></span></p>
+      <div><label class="text-xs font-black text-slate-500 uppercase block mb-1">รหัสผ่านใหม่ (4-6 หลัก)</label><input type="text" id="rp-pw" class="admin-input" placeholder="เช่น 1234" maxlength="6"></div>
+      <p id="rp-error" class="text-red-500 text-sm font-black hidden"></p>
+    </div>
+    <div class="bg-slate-50 px-6 py-4 border-t flex justify-between"><button onclick="closeResetPw()" class="px-5 py-2.5 rounded-xl font-black text-slate-500 hover:bg-slate-200 transition-colors">ยกเลิก</button><button onclick="doResetPw()" class="bg-amber-600 hover:bg-amber-700 text-white px-8 py-2.5 rounded-xl font-black shadow transition-colors">🔑 รีเซ็ต</button></div>
+  </div>
+</div>
+
+<div id="print-report" style="display:none"></div>
+
+<!-- ══════════════ SCRIPT ══════════════ -->
+<script>
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
+const LISTS = {
+  doctors:   ["นายชำนาญ สมรมิตร","นายปฏิเวธ ปะมา","นายพงศ์ศิริ ชุติธนธีระกุล","นางสาวรมณ โชชัย","นางสาววนชพร โค้วสิรภัค","นางสาวศิริวิมล ตาลผาด"],
+  nurses:    ["นางจิตจำนงค์ เสาเวียง","น.ส.จิดาภา คงสิม","นางนวลอนงค์ นรมาตย์","นางนฤมล สิงห์คาร","น.ส.ขวัญฤดี เสาเวียง","น.ส.ณัฐฐินันท์ คำชาลี","นางวชิราภรณ์ ปานศิลา","นส.ธาริรินทร์ทิพย์ มาสอน","นางรจนา บุษบงก์","นางสุพัตรา ราชปัก","น.ส. จารุณี สีหะวงษ์","น.ส. สิรินดา แสงแดง","น.ส. สริญญา เหมือนตา","น.ส.ชนัญญา เสาเวียง"],
+  emt:       ["น.ส.กนกวรรณ จันเทศ","น.ส.รุ่งนภา ทองทวี","นายกฤตปกรณ์ ผดาวัลย์"],
+  na:        ["นางชนิตา ฤกษ์ยาม","นางพรพิไล มัดสยาลักณ์","นส.วรินธร สีหะวงษ์","นส.สมจิตร ชาลี","นางญาใจ จันทะพันธ์","นส.สกาวพร ไชยรัตน์","นส.อรทัย บุษชวงค์","นางพรนภา สีหะวงษ์"],
+  refer:     ["นางศิริบูรณ์ บุญตา","นางพิสมัย ประสาร","นางสมฤดี ขนชัยภูมิ","นางสราญจิต ชาลี","นางปรีดาภรณ์ แหล่งสนาม","นางนัฏกานต์ ยาสันเทียะ","นางสุดา จันทร์อ้น","นางสาวจิฐาปนี สีหะวงษ์","นางสาวนลินี ชาลี","นาสาวอมลรัตน์ สีหะวงษ์","นางจิตจำนงค์ เสาเวียง","น.ส.จิดาภา คงสิม","นางนวลอนงค์ นรมาตย์","นางนฤมล สิงห์คาร","น.ส.ขวัญฤดี เสาเวียง","น.ส.ณัฐฐินันท์ คำชาลี","นางวชิราภรณ์ ปานศิลา","นส.ธาริรินทร์ทิพย์ มาสอน","นางรจนา บุษบงก์","นางสุพัตรา ราชปัก","น.ส. จารุณี สีหะวงษ์","น.ส. สิรินดา แสงแดง","น.ส. สริญญา เหมือนตา","น.ส.ชนัญญา เสาเวียง"],
+  supervise: ["นางจิตจำนงค์ เสาเวียง","นางเตือนใจ แสร์สินธุ์","นางรัศมี คำชาลี","นส.วิริยะ ศิริศักดิ์เสนา","นางสาวสร้อยทิพย์ บุษบงก์","นางเพชรรัตน์ ทัดเทียม","นางรัตนาภรณ์ กองสะดี","น.ส.จิดาภา คงสิม","นางรจนา บุษบงก์","นส.ขวัญปรีญา ชิณวงษ์","นางนวลอนงค์ นรมาตย์"]
+};
+
+const TRIAGE = {
+  er: [
+    {key:'critical',label:'วิกฤต',cls:'triage-red'},{key:'severe',label:'เร่งด่วนมาก',cls:'triage-pink'},
+    {key:'urgent',label:'เร่งด่วน',cls:'triage-yellow'},{key:'normal',label:'ไม่เร่งด่วน',cls:'triage-green'},
+    {key:'general',label:'ทั่วไป',cls:'triage-white'},{key:'admit',label:'Admit',cls:'triage-indigo'},{key:'refer',label:'Refer',cls:'triage-orange'}
+  ],
+  ems: [
+    {key:'critical',label:'วิกฤต',cls:'triage-red'},{key:'severe',label:'เร่งด่วนมาก',cls:'triage-pink'},
+    {key:'urgent',label:'เร่งด่วน',cls:'triage-yellow'},{key:'normal',label:'ไม่เร่งด่วน',cls:'triage-green'},
+    {key:'general',label:'ทั่วไป',cls:'triage-white'},{key:'admit',label:'Admit',cls:'triage-indigo'},
+    {key:'refer',label:'Refer',cls:'triage-orange'},{key:'notfound',label:'ไม่พบเหตุ/ไม่ประสงค์',cls:'triage-white triage-mini'},
+    {key:'death',label:'เสียชีวิต',cls:'triage-slate'}
+  ]
+};
+
+// Emergency offline admin — ใช้ได้เสมอแม้ไม่มี Sheets
+const EMERGENCY = { username:'admin', password:'1234', fullname:'ผู้ดูแลระบบ (Emergency Offline)', role:'admin', active:true };
+
+function blankER()  { return Object.fromEntries(TRIAGE.er.map(t=>[t.key,{trauma:0,nontrauma:0}])); }
+function blankEMS() { return Object.fromEntries(TRIAGE.ems.map(t=>[t.key,{trauma:0,nontrauma:0,als:0,bls:0,fr:0}])); }
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let CU = null; // current user
+let SHEETS_OK = false;
+let cachedUsers = [];
+
+const ST = {
+  er:       blankER(),
+  ems:      blankEMS(),
+  patients: JSON.parse(localStorage.getItem('er_patients_v4')||'[]'),
+  staff:    JSON.parse(localStorage.getItem('er_staff_v4')||'{}'),
+  history:  JSON.parse(localStorage.getItem('er_history_v4')||'[]'),
+};
+
+// ═══════════════════════════════════════
+// SHEETS HELPERS
+// ═══════════════════════════════════════
+const getUrl = () => localStorage.getItem('er_sheets_url')||'';
+
+async function sheetsGET(action, p={}) {
+  const url = getUrl(); if(!url) throw new Error('ยังไม่ตั้งค่า Sheets URL');
+  const qs = new URLSearchParams({action,...p}).toString();
+  const r = await fetch(`${url}?${qs}`);
+  return r.json();
+}
+async function sheetsPOST(action, data={}) {
+  const url = getUrl(); if(!url) return {ok:false,error:'no_url'};
+  await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...data})});
+  return {ok:true};
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+window.onload = async () => {
+  document.getElementById('global-date').value = new Date().toISOString().split('T')[0];
+  setInterval(()=>{ document.getElementById('live-clock').textContent = new Date().toLocaleTimeString('th-TH'); }, 1000);
+  document.getElementById('live-clock').textContent = new Date().toLocaleTimeString('th-TH');
+
+  const url = getUrl();
+  if (!url) {
+    document.getElementById('setup-banner').classList.remove('hidden');
+  } else {
+    document.getElementById('sheets-url-input').value = url;
+    SHEETS_OK = true; updateSheetsUI(true);
+    try { const r = await sheetsGET('getUsers'); if(r.ok) cachedUsers = r.users||[]; } catch(e){}
+  }
+};
+
+// ═══════════════════════════════════════
+// AUTH — LOGIN / LOGOUT
+// ═══════════════════════════════════════
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value.trim();
+  const errEl    = document.getElementById('login-error');
+  const btn      = document.getElementById('login-btn');
+
+  if(!username||!password){
+    errEl.textContent='❌ กรุณากรอก username และรหัสผ่าน';errEl.classList.remove('hidden');return;
+  }
+
+  // Emergency offline admin
+  if(username.toLowerCase()==='admin' && password==='1234' && !SHEETS_OK) {
+    startSession(EMERGENCY, true); return;
+  }
+
+  btn.innerHTML = '<span class="spinner"></span> กำลังตรวจสอบ...';
+  btn.disabled = true; errEl.classList.add('hidden');
+
+  try {
+    let user = null;
+    if(SHEETS_OK) {
+      const r = await sheetsGET('login',{username,password});
+      if(r.ok && r.user) user = r.user;
+      else throw new Error(r.error||'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+    } else {
+      // fallback: check cache or emergency
+      const found = cachedUsers.find(u=>u.username.toLowerCase()===username.toLowerCase()&&String(u.password||'')===password&&u.active);
+      if(found) user = found;
+      else if(username.toLowerCase()==='admin'&&password==='1234') user = EMERGENCY;
+      else throw new Error('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+    }
+    startSession(user, !SHEETS_OK);
+  } catch(e) {
+    errEl.textContent='❌ '+e.message; errEl.classList.remove('hidden');
+    btn.innerHTML='เข้าสู่ระบบ'; btn.disabled=false;
+  }
+}
+
+function startSession(user, offline=false) {
+  CU = user;
+
+  // ── Header badge ──
+  document.getElementById('user-avatar').textContent = (user.username||'?').slice(0,2).toUpperCase();
+  // แสดงชื่อ-นามสกุลเต็มทางซ้าย
+  document.getElementById('user-fullname').textContent = user.fullname;
+
+  const roleLabel = user.role==='admin' ? '👑 Admin' : '👤 User';
+  document.getElementById('user-role-label').textContent = roleLabel + (offline?' · offline':'');
+  document.getElementById('sheets-dot').className =
+    `w-1.5 h-1.5 rounded-full inline-block ${SHEETS_OK?'bg-green-400':'bg-amber-400'}`;
+
+  // ── Role-based UI ──
+  applyRoleUI(user.role);
+
+  // ── Show app ──
+  document.getElementById('login-screen').classList.add('gone');
+  document.getElementById('main-app').classList.remove('gone');
+  document.getElementById('main-app').classList.add('flex');
+
+  // ── Init data ──
+  initStaffSelectors(); loadStaffSelectors();
+  renderERTable(); renderEMSTable(); renderPatients(); renderHistory();
+  initReportFilters(); setupNavStyle();
+  if(getUrl()) updateSheetsUI(true);
+  switchTab('dashboard');
+
+  logAct('เข้าสู่ระบบ', offline?'(offline)':'');
+}
+
+// ── Role-based UI ──
+function applyRoleUI(role) {
+  const isAdmin = role==='admin';
+
+  // Nav: Admin เห็น tab จัดการผู้ใช้
+  document.getElementById('nav-admin').classList.toggle('hidden', !isAdmin);
+
+  // ปุ่ม "ลบประวัติทั้งหมด" — Admin เท่านั้น
+  document.getElementById('btn-clear-history').classList.toggle('hidden', !isAdmin);
+
+  // admin info bar
+  const infoBar = document.getElementById('admin-info-bar');
+  if(infoBar) infoBar.classList.toggle('hidden', !isAdmin);
+}
+
+function doLogout() {
+  if(!confirm('ต้องการออกจากระบบ?')) return;
+  logAct('ออกจากระบบ');
+  CU = null;
+  document.getElementById('login-screen').classList.remove('gone');
+  document.getElementById('main-app').classList.add('gone');
+  document.getElementById('main-app').classList.remove('flex');
+  document.getElementById('login-username').value='';
+  document.getElementById('login-password').value='';
+  document.getElementById('login-btn').innerHTML='เข้าสู่ระบบ';
+  document.getElementById('login-btn').disabled=false;
+  document.getElementById('login-error').classList.add('hidden');
+  document.getElementById('nav-admin').classList.add('hidden');
+}
+
+// ═══════════════════════════════════════
+// ACTIVITY LOG
+// ═══════════════════════════════════════
+async function logAct(action, note='') {
+  if(!CU||!SHEETS_OK) return;
+  try { await sheetsPOST('writeLog',{ts:new Date().toLocaleString('th-TH'),username:CU.username,fullname:CU.fullname,action:action+(note?' '+note:'')}); } catch(e){}
+}
+async function loadActivityLog() {
+  const c = document.getElementById('activity-log-container');
+  if(!SHEETS_OK){c.innerHTML='<div class="p-6 text-center text-amber-600 font-bold">⚠️ ต้องตั้งค่า Sheets ก่อน</div>';return;}
+  c.innerHTML='<div class="p-6 text-center text-slate-400">⏳ กำลังโหลด...</div>';
+  try {
+    const r = await sheetsGET('getLogs');
+    if(!r.ok) throw new Error(r.error);
+    c.innerHTML = (r.logs||[]).map(l=>`<div class="px-5 py-3 flex items-center gap-3 hover:bg-slate-50"><span class="text-xs text-slate-400 font-bold w-36 flex-shrink-0">${l['เวลา']||''}</span><span class="logger-badge">${l['Username']||''}</span><span class="text-sm font-bold text-slate-700">${l['ชื่อ-นามสกุล']||''}</span><span class="text-sm text-slate-500">→ ${l['กิจกรรม']||''}</span></div>`).join('') ||
+      '<div class="p-6 text-center text-slate-400">ยังไม่มีกิจกรรม</div>';
+  } catch(e){c.innerHTML=`<div class="p-6 text-center text-red-500 font-bold">❌ ${e.message}</div>`;}
+}
+
+// ═══════════════════════════════════════
+// USER MANAGEMENT
+// ═══════════════════════════════════════
+async function loadUsers() {
+  const tb = document.getElementById('user-table-body');
+  if(!SHEETS_OK){tb.innerHTML='<tr><td colspan="5" class="py-6 text-center text-amber-600 font-bold">⚠️ ต้องตั้งค่า Sheets URL ก่อน</td></tr>';return;}
+  tb.innerHTML='<tr><td colspan="5" class="py-6 text-center text-slate-400">⏳ กำลังโหลด...</td></tr>';
+  try {
+    const r = await sheetsGET('getUsers');
+    if(!r.ok) throw new Error(r.error||'โหลดไม่สำเร็จ');
+    cachedUsers = r.users||[];
+    renderUserTable(cachedUsers);
+  } catch(e){tb.innerHTML=`<tr><td colspan="5" class="py-6 text-center text-red-500 font-bold">❌ ${e.message}</td></tr>`;}
+}
+
+function renderUserTable(users) {
+  const tb = document.getElementById('user-table-body'); if(!tb) return;
+  if(!users.length){tb.innerHTML='<tr><td colspan="5" class="py-8 text-center text-slate-400 font-bold">ยังไม่มีผู้ใช้</td></tr>';return;}
+  tb.innerHTML = users.map(u=>`
+    <tr class="hover:bg-slate-50">
+      <td class="px-4 py-3 font-black text-blue-700">${u.username}</td>
+      <td class="px-4 py-3 font-bold text-slate-700">${u.fullname}</td>
+      <td class="px-4 py-3 text-center"><span class="${u.role==='admin'?'chip-admin':'chip-user'}">${u.role==='admin'?'👑 Admin':'👤 User'}</span></td>
+      <td class="px-4 py-3 text-center">
+        <button onclick="toggleActive('${u.username}',${!u.active})"
+          class="px-3 py-1 rounded-lg text-xs font-black ${u.active?'bg-emerald-100 text-emerald-700 hover:bg-emerald-200':'bg-red-100 text-red-600 hover:bg-red-200'} transition-colors">
+          ${u.active?'✅ เปิด':'🚫 ปิด'}
+        </button>
+      </td>
+      <td class="px-4 py-3 text-center">
+        <div class="flex items-center justify-center gap-1 flex-wrap">
+          <button onclick="openUserModal('${u.username}')" class="text-blue-400 hover:text-blue-700 text-xs font-bold px-2 py-1 border border-blue-200 rounded-lg transition-colors">✏️ แก้ไข</button>
+          <button onclick="openResetPw('${u.username}')" class="text-amber-500 hover:text-amber-700 text-xs font-bold px-2 py-1 border border-amber-200 rounded-lg transition-colors">🔑 รีเซ็ต pw</button>
+          ${u.username!=='admin'?`<button onclick="deleteUser('${u.username}')" class="text-red-400 hover:text-red-600 text-xs font-bold px-2 py-1 border border-red-200 rounded-lg transition-colors">🗑️ ลบ</button>`:''}
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+let editingUID = null;
+function openUserModal(username=null) {
+  editingUID = username;
+  document.getElementById('user-modal-title').textContent = username?'✏️ แก้ไขบัญชีผู้ใช้':'➕ เพิ่มบัญชีผู้ใช้';
+  document.getElementById('um-error').classList.add('hidden');
+  document.getElementById('um-pw-hint').classList.toggle('hidden', !username);
+  if(username) {
+    const u = cachedUsers.find(x=>x.username===username); if(!u) return;
+    document.getElementById('um-username').value=u.username; document.getElementById('um-username').disabled=true;
+    document.getElementById('um-password').value=''; document.getElementById('um-fullname').value=u.fullname;
+    document.getElementById('um-role').value=u.role; document.getElementById('um-active').value=u.active?'1':'0';
+  } else {
+    ['um-username','um-password','um-fullname'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('um-username').disabled=false;
+    document.getElementById('um-role').value='user'; document.getElementById('um-active').value='1';
+  }
+  document.getElementById('user-modal').classList.add('active');
+}
+function closeUserModal() { document.getElementById('user-modal').classList.remove('active'); document.getElementById('um-username').disabled=false; editingUID=null; }
+
+async function saveUser() {
+  const username = document.getElementById('um-username').value.trim().toLowerCase();
+  const password = document.getElementById('um-password').value.trim();
+  const fullname = document.getElementById('um-fullname').value.trim();
+  const role     = document.getElementById('um-role').value;
+  const active   = document.getElementById('um-active').value;
+  const errEl    = document.getElementById('um-error');
+
+  if(!username||!fullname){errEl.textContent='⚠️ กรุณากรอก username และชื่อ-นามสกุล';errEl.classList.remove('hidden');return;}
+  if(!/^[a-zA-Z0-9]+$/.test(username)){errEl.textContent='⚠️ Username ต้องเป็นตัวอักษร/ตัวเลข';errEl.classList.remove('hidden');return;}
+  if(!editingUID&&!password){errEl.textContent='⚠️ กรุณากรอกรหัสผ่าน';errEl.classList.remove('hidden');return;}
+  if(password&&!/^\d{4,6}$/.test(password)){errEl.textContent='⚠️ รหัสผ่านต้องเป็นตัวเลข 4-6 หลัก';errEl.classList.remove('hidden');return;}
+  if(!SHEETS_OK){errEl.textContent='⚠️ ต้องตั้งค่า Sheets ก่อน';errEl.classList.remove('hidden');return;}
+
+  document.getElementById('um-save-btn').disabled=true; document.getElementById('um-loading').classList.remove('hidden');
+  errEl.classList.add('hidden');
+  try {
+    const payload = {username,fullname,role,active};
+    if(password) payload.password=password; else payload.password='__KEEP__';
+    const r = await sheetsGET('saveUser',payload);
+    if(!r.ok) throw new Error(r.error||'บันทึกไม่สำเร็จ');
+    logAct(editingUID?`แก้ไขบัญชี "${username}"`:`เพิ่มบัญชี "${username}" (${fullname})`);
+    closeUserModal(); await loadUsers();
+  } catch(e){errEl.textContent='❌ '+e.message;errEl.classList.remove('hidden');}
+  document.getElementById('um-save-btn').disabled=false; document.getElementById('um-loading').classList.add('hidden');
+}
+
+async function deleteUser(username) {
+  if(username==='admin'){alert('ไม่สามารถลบบัญชี admin');return;}
+  if(!confirm(`ลบบัญชี "${username}"?`)) return;
+  try{const r=await sheetsGET('deleteUser',{username});if(!r.ok)throw new Error(r.error);logAct(`ลบบัญชี "${username}"`);await loadUsers();}catch(e){alert('❌ '+e.message);}
+}
+
+async function toggleActive(username,makeActive) {
+  const u = cachedUsers.find(x=>x.username===username); if(!u) return;
+  if(username==='admin'&&!makeActive){alert('ไม่สามารถปิดบัญชี admin');return;}
+  try{const r=await sheetsGET('saveUser',{username,fullname:u.fullname,role:u.role,active:makeActive?1:0,password:'__KEEP__'});if(!r.ok)throw new Error(r.error);logAct(`${makeActive?'เปิด':'ปิด'}บัญชี "${username}"`);await loadUsers();}catch(e){alert('❌ '+e.message);}
+}
+
+let rpUser=null;
+function openResetPw(username){rpUser=username;document.getElementById('rp-name').textContent=username;document.getElementById('rp-pw').value='';document.getElementById('rp-error').classList.add('hidden');document.getElementById('resetpw-modal').classList.add('active');}
+function closeResetPw(){document.getElementById('resetpw-modal').classList.remove('active');rpUser=null;}
+async function doResetPw(){
+  const pw=document.getElementById('rp-pw').value.trim();const e=document.getElementById('rp-error');
+  if(!/^\d{4,6}$/.test(pw)){e.textContent='⚠️ รหัสผ่านต้องเป็นตัวเลข 4-6 หลัก';e.classList.remove('hidden');return;}
+  try{const r=await sheetsGET('resetPassword',{username:rpUser,newPassword:pw});if(!r.ok)throw new Error(r.error);logAct(`รีเซ็ตรหัสผ่าน "${rpUser}"`);closeResetPw();alert('✅ รีเซ็ตรหัสผ่านเรียบร้อย');}catch(ex){e.textContent='❌ '+ex.message;e.classList.remove('hidden');}
+}
+
+// ═══════════════════════════════════════
+// SHEETS CONFIG
+// ═══════════════════════════════════════
+function saveSetupUrl(){const u=document.getElementById('setup-url-input').value.trim();if(!u.startsWith('https://script.google.com')){alert('URL ไม่ถูกต้อง');return;}localStorage.setItem('er_sheets_url',u);document.getElementById('sheets-url-input').value=u;SHEETS_OK=true;updateSheetsUI(true);document.getElementById('setup-banner').classList.add('hidden');}
+function toggleSheetsPanel(){document.getElementById('sheets-panel').classList.toggle('hidden');const u=getUrl();if(u)document.getElementById('sheets-url-input').value=u;}
+function saveSheetUrl(){const u=document.getElementById('sheets-url-input').value.trim();if(!u.startsWith('https://script.google.com')){showMsg('❌ URL ไม่ถูกต้อง',false);return;}localStorage.setItem('er_sheets_url',u);SHEETS_OK=true;updateSheetsUI(true);showMsg('✅ บันทึก URL เรียบร้อย',true);}
+async function testSheetConn(){const u=document.getElementById('sheets-url-input').value.trim()||getUrl();if(!u){showMsg('❌ กรุณากรอก URL',false);return;}showMsg('⏳ กำลังทดสอบ...',null);try{const r=await fetch(`${u}?action=ping`);const d=await r.json();if(d.ok){showMsg('✅ เชื่อมต่อสำเร็จ! '+d.message,true);SHEETS_OK=true;updateSheetsUI(true);}else showMsg('❌ '+d.error,false);}catch(e){showMsg('❌ เชื่อมต่อไม่ได้',false);}}
+function showMsg(m,ok){const e=document.getElementById('sheets-test-msg');e.textContent=m;e.className='w-full text-xs font-bold '+(ok===true?'text-green-600':ok===false?'text-red-500':'text-amber-600');e.classList.remove('hidden');}
+function updateSheetsUI(on){document.getElementById('sheets-status-dot').className=`w-2.5 h-2.5 rounded-full flex-shrink-0 ${on?'bg-green-500':'bg-slate-300'}`;document.getElementById('sheets-status-text').textContent=on?'เชื่อมต่อแล้ว ✓':'ยังไม่ตั้งค่า — คลิกเพื่อตั้งค่า';document.getElementById('sheets-status-text').className=`font-bold text-sm truncate ${on?'text-green-700':'text-slate-400'}`;if(document.getElementById('sheets-dot'))document.getElementById('sheets-dot').className=`w-1.5 h-1.5 rounded-full inline-block ${on?'bg-green-400':'bg-amber-400'}`;}
+
+// ═══════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════
+function setupNavStyle(){document.querySelectorAll('.nav-btn').forEach(b=>{b.classList.remove('border-blue-600','text-blue-700','font-extrabold');b.classList.add('border-transparent','text-slate-500');});}
+function switchTab(id){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  setupNavStyle();
+  const b=document.getElementById('nav-'+id);
+  if(b){b.classList.add('border-blue-600','text-blue-700','font-extrabold');b.classList.remove('border-transparent','text-slate-500');}
+  if(id==='reports'){initReportFilters();renderReports();}
+  if(id==='admin'){loadUsers();}
+}
+
+// ═══════════════════════════════════════
+// ER TABLE
+// ═══════════════════════════════════════
+function renderERTable(){
+  const tb=document.getElementById('er-table-body');tb.innerHTML='';let tT=0,tN=0;
+  TRIAGE.er.forEach(t=>{const d=ST.er[t.key];const row=tb.insertRow();row.className='hover:bg-slate-50';row.innerHTML=`<td class="px-4 py-2"><span class="triage-tag ${t.cls}">${t.label}</span></td><td class="px-1 py-2 text-center"><input type="number" min="0" value="${d.trauma}" class="table-input" onchange="setER('${t.key}','trauma',this.value)"></td><td class="px-1 py-2 text-center"><input type="number" min="0" value="${d.nontrauma}" class="table-input" onchange="setER('${t.key}','nontrauma',this.value)"></td><td class="px-4 py-2 text-right font-black text-slate-700 bg-slate-50 text-lg">${d.trauma+d.nontrauma}</td>`;if(t.key!=='admit'&&t.key!=='refer'){tT+=d.trauma;tN+=d.nontrauma;}});
+  document.getElementById('er-foot-t').textContent=tT;document.getElementById('er-foot-n').textContent=tN;document.getElementById('er-foot-total').textContent=tT+tN;updateStats();
+}
+function setER(k,f,v){ST.er[k][f]=parseInt(v)||0;renderERTable();}
+
+function renderEMSTable(){
+  const tb=document.getElementById('ems-table-body');tb.innerHTML='';let tT=0,tN=0,tA=0,tB=0,tF=0,tot=0;
+  TRIAGE.ems.forEach(t=>{const d=ST.ems[t.key];const rt=Math.max(d.trauma+d.nontrauma,d.als+d.bls+d.fr);const row=tb.insertRow();row.className='hover:bg-slate-50';row.innerHTML=`<td class="px-4 py-1.5 border-r border-slate-100"><span class="triage-tag ${t.cls}">${t.label}</span></td><td class="px-1 py-1.5 text-center"><input type="number" min="0" value="${d.trauma}" class="table-input" onchange="setEMS('${t.key}','trauma',this.value)"></td><td class="px-1 py-1.5 text-center"><input type="number" min="0" value="${d.nontrauma}" class="table-input" onchange="setEMS('${t.key}','nontrauma',this.value)"></td><td class="px-1 py-1.5 text-center"><input type="number" min="0" value="${d.als}" class="table-input" onchange="setEMS('${t.key}','als',this.value)"></td><td class="px-1 py-1.5 text-center"><input type="number" min="0" value="${d.bls}" class="table-input" onchange="setEMS('${t.key}','bls',this.value)"></td><td class="px-1 py-1.5 text-center"><input type="number" min="0" value="${d.fr}" class="table-input" onchange="setEMS('${t.key}','fr',this.value)"></td><td class="px-3 py-1.5 text-right font-black text-slate-700 bg-slate-50 text-lg">${rt}</td>`;if(!['death','notfound','refer','admit'].includes(t.key)){tT+=d.trauma;tN+=d.nontrauma;tA+=d.als;tB+=d.bls;tF+=d.fr;tot+=rt;}});
+  ['t','n','als','bls','fr'].forEach((k,i)=>document.getElementById('ems-foot-'+k).textContent=[tT,tN,tA,tB,tF][i]);document.getElementById('ems-foot-total').textContent=tot;updateStats();
+}
+function setEMS(k,f,v){ST.ems[k][f]=parseInt(v)||0;renderEMSTable();}
+
+function updateStats(){
+  let eR=0;TRIAGE.er.forEach(t=>{if(t.key!=='admit'&&t.key!=='refer')eR+=ST.er[t.key].trauma+ST.er[t.key].nontrauma;});
+  let eE=0;TRIAGE.ems.forEach(t=>{if(!['death','notfound','refer','admit'].includes(t.key))eE+=Math.max(ST.ems[t.key].trauma+ST.ems[t.key].nontrauma,ST.ems[t.key].als+ST.ems[t.key].bls+ST.ems[t.key].fr);});
+  document.getElementById('stat-er').textContent=eR;document.getElementById('stat-ems').textContent=eE;
+  document.getElementById('stat-admit').textContent=ST.er.admit.trauma+ST.er.admit.nontrauma;
+  document.getElementById('stat-refer').textContent=ST.er.refer.trauma+ST.er.refer.nontrauma;
+}
+
+// ═══════════════════════════════════════
+// PATIENTS
+// ═══════════════════════════════════════
+let editingPid=null;
+function openPatientModal(id=null){editingPid=id;document.getElementById('modal-title').textContent=id?'แก้ไขข้อมูลผู้ป่วย':'ข้อมูลผู้ป่วยส่งเวร';if(id){const p=ST.patients.find(x=>x.id===id);if(p){document.getElementById('form-hn').value=p.hn||'';document.getElementById('form-gender').value=p.gender||'ชาย';document.getElementById('form-status').value=p.status||'Pending';document.getElementById('form-dx').value=p.dx||'';document.getElementById('form-abnormal').value=p.abnormal||'';document.getElementById('form-todo').value=p.todo||'';document.getElementById('form-remark').value=p.remark||'';}}else{['form-hn','form-dx','form-abnormal','form-todo','form-remark'].forEach(i=>document.getElementById(i).value='');document.getElementById('form-gender').value='ชาย';document.getElementById('form-status').value='Pending';}document.getElementById('patient-modal').classList.add('active');}
+function closePatientModal(){document.getElementById('patient-modal').classList.remove('active');editingPid=null;}
+function applyCPR(){document.getElementById('form-dx').value='Cardiac Arrest';document.getElementById('form-todo').value='Post CPR care, Intensive Monitor';document.getElementById('form-status').value='Refer';const c=document.getElementById('form-remark').value;document.getElementById('form-remark').value=c.includes('📱 Telemed Active')?'CPR Active Case | 📱 Telemed Active':'CPR Active Case';}
+function applyTelemed(){document.getElementById('form-status').value='Refer';const c=document.getElementById('form-remark').value;const ct=document.getElementById('form-todo').value;if(ct&&!ct.includes('Telemed'))document.getElementById('form-todo').value=ct+' | Consult Telemed — รอผลและคำแนะนำ';else if(!ct)document.getElementById('form-todo').value='Consult Telemed — รอผลและคำแนะนำ';document.getElementById('form-remark').value=c.includes('CPR Active Case')?'CPR Active Case | 📱 Telemed Active':'📱 Telemed Active';}
+function savePatient(){const hn=document.getElementById('form-hn').value.trim();const dx=document.getElementById('form-dx').value.trim();if(!hn||!dx){alert('กรุณากรอก HN และวินิจฉัย');return;}const d={hn,dx,gender:document.getElementById('form-gender').value,status:document.getElementById('form-status').value,abnormal:document.getElementById('form-abnormal').value.trim(),todo:document.getElementById('form-todo').value.trim(),remark:document.getElementById('form-remark').value.trim(),ts:new Date().toLocaleString('th-TH')};if(editingPid){const i=ST.patients.findIndex(p=>p.id===editingPid);if(i>-1)ST.patients[i]={...ST.patients[i],...d};}else{d.id=Date.now();ST.patients.unshift(d);}localStorage.setItem('er_patients_v4',JSON.stringify(ST.patients));renderPatients();closePatientModal();}
+function deletePatient(id){if(!confirm('ลบรายการนี้?'))return;ST.patients=ST.patients.filter(p=>p.id!==id);localStorage.setItem('er_patients_v4',JSON.stringify(ST.patients));renderPatients();}
+function renderPatients(){
+  const tb=document.getElementById('patient-table-body');
+  if(!ST.patients.length){tb.innerHTML='<tr><td colspan="7" class="py-12 text-center text-slate-400 font-bold italic">-- ยังไม่มีรายการส่งเวร --</td></tr>';return;}
+  const ss={Admit:'bg-indigo-100 text-indigo-800 border-indigo-200',Refer:'bg-orange-100 text-orange-800 border-orange-200',Obs:'bg-emerald-100 text-emerald-800 border-emerald-200',Pending:'bg-amber-100 text-amber-800 border-amber-200'};
+  tb.innerHTML=ST.patients.map(p=>`<tr class="hover:bg-blue-50/40 transition-colors"><td class="px-4 py-3 border-r border-slate-100"><div class="font-black text-lg text-slate-800">${p.hn}</div><div class="text-xs text-slate-400 font-bold">${p.gender}</div></td><td class="px-4 py-3 border-r border-slate-100"><span class="px-2 py-0.5 rounded-lg text-xs font-black uppercase border ${ss[p.status]||ss.Pending}">${p.status}</span></td><td class="px-4 py-3 border-r border-slate-100 font-black text-xs text-slate-700">${p.dx}</td><td class="px-4 py-3 border-r border-slate-100 text-red-600 font-bold text-xs italic bg-red-50/20">${p.abnormal||'—'}</td><td class="px-4 py-3 border-r border-slate-100 text-blue-800 font-bold text-xs bg-blue-50/10">${p.todo||'—'}</td><td class="px-4 py-3 border-r border-slate-100 text-red-600 font-black text-xs">${p.remark?'⚠️ '+p.remark:'—'}</td><td class="px-4 py-3 text-center no-print"><div class="flex items-center justify-center gap-2"><button onclick="openPatientModal(${p.id})" class="text-blue-400 hover:text-blue-700">✏️</button><button onclick="deletePatient(${p.id})" class="text-slate-300 hover:text-red-500">🗑️</button></div></td></tr>`).join('');
+}
+
+// ═══════════════════════════════════════
+// STAFF
+// ═══════════════════════════════════════
+function initStaffSelectors(){const opt=l=>'<option value="">— กรุณาเลือก —</option>'+l.map(n=>`<option value="${n}">${n}</option>`).join('');document.getElementById('s-doctor').innerHTML=opt(LISTS.doctors);document.querySelectorAll('.nurse-pool').forEach(s=>s.innerHTML=opt(LISTS.nurses));document.getElementById('s-emt').innerHTML=opt(LISTS.emt);document.querySelectorAll('.na-pool').forEach(s=>s.innerHTML=opt(LISTS.na));document.querySelectorAll('.refer-pool').forEach(s=>s.innerHTML=opt(LISTS.refer));document.getElementById('s-super').innerHTML=opt(LISTS.supervise);}
+function loadStaffSelectors(){const s=ST.staff;const set=(id,v)=>{const e=document.getElementById(id);if(e&&v)e.value=v;};set('s-doctor',s.doctor);set('s-head',s.head);set('s-m1',s.m1);set('s-m2',s.m2);set('s-m3',s.m3);set('s-emt',s.emt);set('s-na',s.na);set('s-ref1',s.ref1);set('s-ref2',s.ref2);set('s-super',s.supervise);['head','m1','m2','m3','emt','na','na_ref'].forEach(k=>{const e=document.getElementById('s-'+k+'-other');if(e&&s[k+'_other'])e.value=s[k+'_other'];});renderStaffSummary();}
+function saveStaff(){const gv=id=>{const e=document.getElementById(id);return e?e.value:'';};ST.staff={doctor:gv('s-doctor'),head:gv('s-head'),head_other:gv('s-head-other'),m1:gv('s-m1'),m1_other:gv('s-m1-other'),m2:gv('s-m2'),m2_other:gv('s-m2-other'),m3:gv('s-m3'),m3_other:gv('s-m3-other'),emt:gv('s-emt'),emt_other:gv('s-emt-other'),na:gv('s-na'),na_other:gv('s-na-other'),ref1:gv('s-ref1'),ref2:gv('s-ref2'),na_ref:gv('s-na-ref'),na_ref_other:gv('s-na-ref-other'),supervise:gv('s-super')};localStorage.setItem('er_staff_v4',JSON.stringify(ST.staff));renderStaffSummary();const btn=document.querySelector('#tab-staff button[onclick="saveStaff()"]');btn.textContent='✅ บันทึกแล้ว!';btn.classList.replace('bg-slate-900','bg-emerald-700');setTimeout(()=>{btn.textContent='✅ ยืนยันและบันทึกข้อมูลเจ้าหน้าที่';btn.classList.replace('bg-emerald-700','bg-slate-900');},2000);}
+function renderStaffSummary(){const s=ST.staff;const n=(a,b)=>{const sv=s[a]||'';const ov=s[b]||'';if(sv&&ov)return sv+', '+ov;return sv||ov||'';};const rows=[{icon:'🩺',label:'แพทย์เวร',value:s.doctor||''},{icon:'👩‍⚕️',label:'หัวหน้าเวร',value:n('head','head_other')},{icon:'💊',label:'Member 1',value:n('m1','m1_other')},{icon:'💊',label:'Member 2',value:n('m2','m2_other')},{icon:'💊',label:'Member 3',value:n('m3','m3_other')},{icon:'🚑',label:'EMT',value:n('emt','emt_other')},{icon:'🤝',label:'NA',value:n('na','na_other')},{icon:'🔁',label:'Refer 1',value:s.ref1||''},{icon:'🔁',label:'Refer 2',value:s.ref2||''},{icon:'🔄',label:'NA Refer',value:n('na_ref','na_ref_other')},{icon:'📑',label:'เวรนิเทศ',value:s.supervise||''}].filter(r=>r.value);const cont=document.getElementById('staff-summary-content');if(!rows.length){cont.innerHTML='<p class="text-slate-400 italic text-sm text-center py-4">— ยังไม่มีข้อมูลเจ้าหน้าที่ —</p>';return;}cont.innerHTML=`<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">${rows.map(r=>`<div class="flex items-start gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3"><span class="text-lg mt-0.5">${r.icon}</span><div class="min-w-0"><div class="text-xs font-black text-slate-400 uppercase tracking-wide">${r.label}</div><div class="font-bold text-slate-800 text-base leading-snug break-words">${r.value}</div></div></div>`).join('')}</div><div class="mt-3 text-right text-xs text-slate-400 font-bold">บันทึกล่าสุด: ${new Date().toLocaleString('th-TH')}</div>`;}
+
+// ═══════════════════════════════════════
+// SAVE SHIFT
+// ═══════════════════════════════════════
+async function saveCurrentShift(){
+  const date=document.getElementById('global-date').value;const shift=document.getElementById('global-shift').value;const ts=new Date().toLocaleString('th-TH');
+  const s=ST.staff;const jn=(a,b)=>[s[a],s[b]].filter(Boolean).join(', ');
+  const staffDisplay=[s.doctor&&`แพทย์: ${s.doctor}`,(s.head||s.head_other)&&`หัวหน้าเวร: ${jn('head','head_other')}`,(s.m1||s.m1_other)&&`Member 1: ${jn('m1','m1_other')}`,(s.m2||s.m2_other)&&`Member 2: ${jn('m2','m2_other')}`,(s.m3||s.m3_other)&&`Member 3: ${jn('m3','m3_other')}`,(s.emt||s.emt_other)&&`EMT: ${jn('emt','emt_other')}`,(s.na||s.na_other)&&`NA: ${jn('na','na_other')}`,s.ref1&&`Refer 1: ${s.ref1}`,s.ref2&&`Refer 2: ${s.ref2}`,(s.na_ref||s.na_ref_other)&&`NA Refer: ${jn('na_ref','na_ref_other')}`,s.supervise&&`นิเทศ: ${s.supervise}`].filter(Boolean);
+  const entry={id:Date.now(),date,shift,shiftLabel:shift,ts,loggedBy:CU?.username||'',loggedByFullname:CU?.fullname||'',stats:{er:document.getElementById('stat-er').textContent,ems:document.getElementById('stat-ems').textContent,admit:document.getElementById('stat-admit').textContent,refer:document.getElementById('stat-refer').textContent},staffDisplay,patients:JSON.parse(JSON.stringify(ST.patients)),erData:JSON.parse(JSON.stringify(ST.er)),emsData:JSON.parse(JSON.stringify(ST.ems))};
+  ST.history.unshift(entry);localStorage.setItem('er_history_v4',JSON.stringify(ST.history));
+
+  const btn=document.querySelector('#tab-dashboard button[onclick="saveCurrentShift()"]');const orig=btn.innerHTML;btn.disabled=true;btn.innerHTML='⏳ กำลังบันทึก...';btn.classList.replace('bg-blue-800','bg-slate-600');
+
+  let msg='\n(ยังไม่ได้ตั้งค่า Google Sheets)';
+  if(SHEETS_OK){
+    try{
+      const base={date,shift,timestamp:ts,loggedBy:CU?.username,loggedByFullname:CU?.fullname};
+      const erRows=TRIAGE.er.map(t=>({label:t.label,trauma:ST.er[t.key].trauma,nontrauma:ST.er[t.key].nontrauma,total:ST.er[t.key].trauma+ST.er[t.key].nontrauma}));
+      const emsRows=TRIAGE.ems.map(t=>{const d=ST.ems[t.key];return{label:t.label,trauma:d.trauma,nontrauma:d.nontrauma,als:d.als,bls:d.bls,fr:d.fr,total:Math.max(d.trauma+d.nontrauma,d.als+d.bls+d.fr)};});
+      const patRows=ST.patients.map(p=>({hn:p.hn,gender:p.gender,status:p.status,dx:p.dx,abnormal:p.abnormal,todo:p.todo,remark:p.remark}));
+      await Promise.all([sheetsPOST('writeERData',{...base,rows:erRows}),sheetsPOST('writeEMSData',{...base,rows:emsRows}),sheetsPOST('writePatientData',{...base,rows:patRows}),sheetsPOST('writeHistory',{...base,...entry})]);
+      msg='\n✅ ส่งข้อมูลไป Google Sheets เรียบร้อย!';
+    }catch(e){msg='\n⚠️ ส่ง Sheets ไม่สำเร็จ: '+e.message;}
+  }
+  logAct(`บันทึกสรุปยอดเวร ${shift} วันที่ ${date}`);
+  btn.disabled=false;btn.innerHTML='✅ บันทึกเรียบร้อย!';btn.classList.replace('bg-slate-600','bg-emerald-700');setTimeout(()=>{btn.innerHTML=orig;btn.classList.replace('bg-emerald-700','bg-blue-800');},3000);
+  toast(msg);renderHistory();setTimeout(()=>{resetDash();switchTab('history');},1200);
+}
+
+function resetDash(){ST.er=blankER();ST.ems=blankEMS();ST.patients=[];localStorage.setItem('er_patients_v4',JSON.stringify(ST.patients));const shift=document.getElementById('global-shift').value;if(shift==='เวรดึก'){const d=new Date(document.getElementById('global-date').value);d.setDate(d.getDate()+1);document.getElementById('global-date').value=d.toISOString().split('T')[0];}const so=['เวรเช้า','เวรบ่าย','เวรดึก'];document.getElementById('global-shift').value=so[(so.indexOf(shift)+1)%3];renderERTable();renderEMSTable();renderPatients();renderStaffSummary();}
+
+function toast(extra){const n=document.createElement('div');n.className='fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-4 rounded-2xl shadow-2xl text-sm font-bold max-w-xs';n.style.animation='fadeInUp .3s ease';n.innerHTML=`<div class="font-black text-base mb-1">💾 บันทึกสรุปยอดเวร</div>${CU?`<div class="logger-badge mb-1 inline-flex">📝 ${CU.fullname}</div>`:''}${extra?`<div class="text-slate-300 text-xs mt-1 whitespace-pre-line">${extra}</div>`:''}`;document.body.appendChild(n);setTimeout(()=>{n.style.opacity='0';n.style.transition='opacity .5s';setTimeout(()=>n.remove(),500);},4500);}
+
+// ═══════════════════════════════════════
+// HISTORY  — User: ดูได้, ลบ/void ไม่ได้
+// ═══════════════════════════════════════
+function renderHistory(){
+  const cont=document.getElementById('history-container');
+  if(!ST.history.length){cont.innerHTML='<div class="col-span-full text-center py-20 text-slate-400 font-bold">ยังไม่พบประวัติการบันทึก</div>';return;}
+  const si={'เวรเช้า':'🌅','เวรบ่าย':'🌤️','เวรดึก':'🌙'};
+  const isAdmin = CU?.role==='admin';
+  cont.innerHTML=ST.history.map(h=>{
+    const isVoid=!!h.voidedAt;
+    const logBadge=h.loggedByFullname?`<span class="logger-badge mt-1">📝 ${h.loggedByFullname}</span>`:'';
+    const vOv=isVoid?`<div style="position:absolute;inset:0;z-index:2;overflow:hidden;border-radius:16px;pointer-events:none;"><svg viewBox="0 0 400 300" style="position:absolute;inset:0;width:100%;height:100%;" preserveAspectRatio="none"><line x1="0" y1="0" x2="400" y2="300" stroke="rgba(220,38,38,.55)" stroke-width="3.5"/><line x1="400" y1="0" x2="0" y2="300" stroke="rgba(220,38,38,.55)" stroke-width="3.5"/></svg></div><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:3;pointer-events:none;"><div style="background:rgba(255,255,255,.9);border:2.5px solid rgba(220,38,38,.4);border-radius:12px;padding:6px 22px;text-align:center;"><div style="font-size:2.2rem;font-weight:900;color:rgba(220,38,38,.65);letter-spacing:.2em;">OFF</div></div></div>`:'';
+
+    // Admin: แสดงปุ่มแก้ไข/พิมพ์/ลบ  |  User: แสดงแค่พิมพ์
+    const actions = !isVoid
+      ? (isAdmin
+          ? `<button onclick="openEHModal(${h.id})" class="text-emerald-500 hover:text-emerald-700 text-xs font-bold px-2 py-1 border border-emerald-200 rounded-lg">✏️</button>
+             <button onclick="printHistoryEntry(${h.id})" class="text-blue-400 hover:text-blue-700 text-xs font-bold px-2 py-1 border border-blue-200 rounded-lg">🖨️</button>
+             <button onclick="openVoidModal(${h.id})" class="text-red-400 hover:text-red-600 text-xs font-bold px-2 py-1 border border-red-200 rounded-lg">🗑️</button>`
+          : `<button onclick="printHistoryEntry(${h.id})" class="text-blue-400 hover:text-blue-700 text-xs font-bold px-2 py-1 border border-blue-200 rounded-lg">🖨️ พิมพ์</button>`)
+      : (isAdmin
+          ? `<button onclick="undoVoid(${h.id})" class="text-slate-400 hover:text-slate-700 text-xs font-bold px-2 py-1 border border-slate-200 rounded-lg pointer-events-auto">↩️ กู้คืน</button>`
+          : '');
+
+    return `<div class="card p-5 relative ${isVoid?'void-card':''}">${vOv}<div class="${isVoid?'opacity-40 pointer-events-none select-none':''}"><div class="flex justify-between items-start mb-3"><div><h4 class="font-black text-lg ${isVoid?'text-slate-400 line-through':'text-blue-700'}">${si[h.shiftLabel||h.shift]||''} ${h.shiftLabel||h.shift}</h4><div class="text-xs text-slate-500 font-bold">${h.date}</div><div class="text-xs text-slate-400">${h.ts}</div>${logBadge}${isVoid?`<div class="text-xs text-red-400 font-black mt-1">⛔ ${h.voidReason||''}</div>`:''}</div><div class="flex gap-1 flex-wrap justify-end pointer-events-auto">${actions}</div></div><div class="grid grid-cols-4 gap-2 mb-3 text-center"><div class="bg-blue-50 p-2 rounded-xl"><div class="text-xs font-black text-blue-600">ER</div><div class="text-3xl font-black">${h.stats.er}</div></div><div class="bg-emerald-50 p-2 rounded-xl"><div class="text-xs font-black text-emerald-600">EMS</div><div class="text-3xl font-black">${h.stats.ems}</div></div><div class="bg-indigo-50 p-2 rounded-xl"><div class="text-xs font-black text-indigo-600">ADM</div><div class="text-3xl font-black">${h.stats.admit}</div></div><div class="bg-orange-50 p-2 rounded-xl"><div class="text-xs font-black text-orange-600">REF</div><div class="text-3xl font-black">${h.stats.refer}</div></div></div>${h.staffDisplay&&h.staffDisplay.length?`<div class="border-t pt-3 space-y-1">${h.staffDisplay.slice(0,3).map(s=>`<div class="text-sm text-slate-600 font-bold">${s}</div>`).join('')}${h.staffDisplay.length>3?`<div class="text-xs text-slate-400">+ อีก ${h.staffDisplay.length-3} ท่าน</div>`:''}</div>`:''}</div></div>`;
+  }).join('');
+}
+
+// Void — Admin only (UI guard + function guard)
+let voidId=null;
+function openVoidModal(id){if(CU?.role!=='admin')return;voidId=id;document.getElementById('void-reason-input').value='';document.getElementById('void-reason-error').classList.add('hidden');document.getElementById('void-modal').classList.add('active');}
+function closeVoidModal(){document.getElementById('void-modal').classList.remove('active');voidId=null;}
+function confirmVoid(){const r=document.getElementById('void-reason-input').value.trim();if(!r){document.getElementById('void-reason-error').classList.remove('hidden');return;}const i=ST.history.findIndex(h=>h.id===voidId);if(i===-1)return;ST.history[i].voidedAt=new Date().toLocaleString('th-TH');ST.history[i].voidReason=r;localStorage.setItem('er_history_v4',JSON.stringify(ST.history));closeVoidModal();renderHistory();}
+function undoVoid(id){if(CU?.role!=='admin')return;if(!confirm('กู้คืน?'))return;const i=ST.history.findIndex(h=>h.id===id);if(i===-1)return;delete ST.history[i].voidedAt;delete ST.history[i].voidReason;localStorage.setItem('er_history_v4',JSON.stringify(ST.history));renderHistory();}
+function clearHistory(){if(CU?.role!=='admin')return;if(!confirm('ลบประวัติทั้งหมด?'))return;ST.history=[];localStorage.setItem('er_history_v4','[]');renderHistory();}
+
+// Edit History — Admin only
+let editHid=null;
+function openEHModal(id){if(CU?.role!=='admin')return;const h=ST.history.find(x=>x.id===id);if(!h)return;editHid=id;document.getElementById('eh-date').value=h.date||'';document.getElementById('eh-shift').value=h.shiftLabel||h.shift||'เวรเช้า';document.getElementById('eh-er').value=h.stats?.er||0;document.getElementById('eh-ems').value=h.stats?.ems||0;document.getElementById('eh-admit').value=h.stats?.admit||0;document.getElementById('eh-refer').value=h.stats?.refer||0;document.getElementById('eh-note').value='';renderEHPats(h.patients||[]);document.getElementById('edit-history-modal').classList.add('active');}
+function closeEditHistoryModal(){document.getElementById('edit-history-modal').classList.remove('active');editHid=null;}
+function renderEHPats(patients){const c=document.getElementById('eh-patients-list');if(!patients.length){c.innerHTML='<p class="text-slate-400 text-xs italic text-center py-3">— ไม่มีผู้ป่วย —</p>';return;}c.innerHTML=patients.map((p,i)=>`<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 grid grid-cols-12 gap-2 items-center"><div class="col-span-2"><div class="text-xs text-slate-400 font-black">HN</div><input type="text" value="${p.hn||''}" onchange="updateEHP(${i},'hn',this.value)" class="w-full border border-slate-200 rounded-lg px-2 py-1 text-sm font-bold outline-none focus:border-blue-400"></div><div class="col-span-2"><div class="text-xs text-slate-400 font-black">สถานะ</div><select onchange="updateEHP(${i},'status',this.value)" class="w-full border border-slate-200 rounded-lg px-1 py-1 text-xs font-bold outline-none bg-white">${['Pending','Admit','Refer','Obs'].map(s=>`<option ${p.status===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="col-span-4"><div class="text-xs text-slate-400 font-black">วินิจฉัย</div><input type="text" value="${p.dx||''}" onchange="updateEHP(${i},'dx',this.value)" class="w-full border border-slate-200 rounded-lg px-2 py-1 text-sm font-bold outline-none focus:border-blue-400"></div><div class="col-span-3"><div class="text-xs text-slate-400 font-black">หมายเหตุ</div><input type="text" value="${p.remark||''}" onchange="updateEHP(${i},'remark',this.value)" class="w-full border border-slate-200 rounded-lg px-2 py-1 text-sm font-bold outline-none text-red-600"></div><div class="col-span-1 flex justify-center"><button onclick="removeEHP(${i})" class="text-slate-300 hover:text-red-500 font-bold text-lg">✕</button></div></div>`).join('');}
+function updateEHP(i,f,v){const h=ST.history.find(x=>x.id===editHid);if(!h||!h.patients[i])return;h.patients[i][f]=v;}
+function removeEHP(i){const h=ST.history.find(x=>x.id===editHid);if(!h)return;h.patients.splice(i,1);renderEHPats(h.patients);}
+function addEHPatient(){const h=ST.history.find(x=>x.id===editHid);if(!h)return;if(!h.patients)h.patients=[];h.patients.push({hn:'',gender:'ชาย',dx:'',status:'Pending',abnormal:'',todo:'',remark:'',ts:''});renderEHPats(h.patients);}
+function saveEditHistory(){const i=ST.history.findIndex(x=>x.id===editHid);if(i===-1)return;const shift=document.getElementById('eh-shift').value;ST.history[i].date=document.getElementById('eh-date').value;ST.history[i].shift=ST.history[i].shiftLabel=shift;ST.history[i].stats={er:document.getElementById('eh-er').value||'0',ems:document.getElementById('eh-ems').value||'0',admit:document.getElementById('eh-admit').value||'0',refer:document.getElementById('eh-refer').value||'0'};ST.history[i].editedAt=new Date().toLocaleString('th-TH');ST.history[i].editedBy=CU?.fullname||'';const note=document.getElementById('eh-note').value.trim();if(note)ST.history[i].editNote=note;localStorage.setItem('er_history_v4',JSON.stringify(ST.history));closeEditHistoryModal();renderHistory();}
+
+// ═══════════════════════════════════════
+// REPORTS
+// ═══════════════════════════════════════
+function initReportFilters(){const years=[...new Set(ST.history.map(h=>(h.date||'').slice(0,4)))].filter(Boolean).sort().reverse();const sel=document.getElementById('filter-year');const cy=new Date().getFullYear().toString();sel.innerHTML='<option value="all">— ทุกปี —</option>'+years.map(y=>`<option value="${y}" ${y===cy?'selected':''}>${y}</option>`).join('');}
+function getFiltered(){const yr=document.getElementById('filter-year')?.value||'all';const mo=document.getElementById('filter-month')?.value||'all';return ST.history.filter(h=>{if(h.voidedAt)return false;const d=h.date||'';if(yr!=='all'&&!d.startsWith(yr))return false;if(mo!=='all'&&d.slice(5,7)!==mo)return false;return true;});}
+function renderReports(){
+  const f=getFiltered();
+  const tER=f.reduce((s,h)=>s+(parseInt(h.stats?.er)||0),0),tEMS=f.reduce((s,h)=>s+(parseInt(h.stats?.ems)||0),0),tAdm=f.reduce((s,h)=>s+(parseInt(h.stats?.admit)||0),0),tRef=f.reduce((s,h)=>s+(parseInt(h.stats?.refer)||0),0),tPat=f.reduce((s,h)=>s+(h.patients?.length||0),0);
+  document.getElementById('report-summary-cards').innerHTML=`<div class="stat-card border-t-4 border-blue-500 text-center"><p class="text-slate-400 font-black text-sm uppercase tracking-widest mb-1">รวม ER</p><h3 class="text-4xl font-black text-blue-700">${tER}</h3><p class="text-xs text-slate-400 mt-1">${f.length} เวร</p></div><div class="stat-card border-t-4 border-emerald-500 text-center"><p class="text-slate-400 font-black text-sm uppercase tracking-widest mb-1">รวม EMS</p><h3 class="text-4xl font-black text-emerald-600">${tEMS}</h3></div><div class="stat-card border-t-4 border-indigo-500 text-center"><p class="text-slate-400 font-black text-sm uppercase tracking-widest mb-1">รวม Admit</p><h3 class="text-4xl font-black text-indigo-700">${tAdm}</h3></div><div class="stat-card border-t-4 border-orange-500 text-center"><p class="text-slate-400 font-black text-sm uppercase tracking-widest mb-1">รวม Refer</p><h3 class="text-4xl font-black text-orange-600">${tRef}</h3></div>`;
+  const sb={'เวรเช้า':'bg-amber-100 text-amber-800','เวรบ่าย':'bg-sky-100 text-sky-800','เวรดึก':'bg-indigo-100 text-indigo-800'};
+  const tb=document.getElementById('report-table-body');const tf=document.getElementById('report-table-foot');
+  if(!f.length){tb.innerHTML='<tr><td colspan="9" class="py-10 text-center text-slate-400 font-bold">ไม่พบข้อมูล</td></tr>';tf.innerHTML='';return;}
+  tb.innerHTML=f.map(h=>{const er=parseInt(h.stats?.er)||0;const ems=parseInt(h.stats?.ems)||0;const adm=parseInt(h.stats?.admit)||0;const ref=parseInt(h.stats?.refer)||0;const sl=h.shiftLabel||h.shift;const lb=h.loggedByFullname?`<span class="logger-badge">${h.loggedByFullname}</span>`:'<span class="text-slate-300">—</span>';return`<tr class="hover:bg-slate-50"><td class="px-4 py-2.5 font-bold text-slate-700">${h.date}</td><td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded-lg text-xs font-black ${sb[sl]||'bg-slate-100 text-slate-700'}">${sl}</span></td><td class="px-4 py-2.5 text-center font-black text-blue-700">${er}</td><td class="px-4 py-2.5 text-center font-black text-emerald-700">${ems}</td><td class="px-4 py-2.5 text-center font-black text-indigo-700">${adm}</td><td class="px-4 py-2.5 text-center font-black text-orange-600">${ref}</td><td class="px-4 py-2.5 text-center font-bold text-slate-600">${h.patients?.length||0}</td><td class="px-4 py-2.5 text-center font-black text-slate-800 bg-slate-50">${er+ems}</td><td class="px-4 py-2.5 text-center">${lb}</td></tr>`;}).join('');
+  tf.innerHTML=`<tr class="bg-blue-50 border-t-2 border-blue-200 font-black"><td class="px-4 py-2.5 text-blue-800" colspan="2">รวม ${f.length} เวร</td><td class="px-4 py-2.5 text-center text-blue-700">${tER}</td><td class="px-4 py-2.5 text-center text-emerald-700">${tEMS}</td><td class="px-4 py-2.5 text-center text-indigo-700">${tAdm}</td><td class="px-4 py-2.5 text-center text-orange-600">${tRef}</td><td class="px-4 py-2.5 text-center text-slate-600">${tPat}</td><td class="px-4 py-2.5 text-center text-slate-800">${tER+tEMS}</td><td></td></tr>`;
+}
+
+// ═══════════════════════════════════════
+// EXCEL EXPORT
+// ═══════════════════════════════════════
+function buildStaffRows(){const s=ST.staff;const n=(a,b)=>[s[a],s[b]].filter(Boolean).join(', ');return[{label:'แพทย์เวร',value:s.doctor||''},{label:'หัวหน้าเวร',value:n('head','head_other')},{label:'Member 1',value:n('m1','m1_other')},{label:'Member 2',value:n('m2','m2_other')},{label:'Member 3',value:n('m3','m3_other')},{label:'EMT',value:n('emt','emt_other')},{label:'NA',value:n('na','na_other')},{label:'Refer 1',value:s.ref1||''},{label:'Refer 2',value:s.ref2||''},{label:'NA Refer',value:n('na_ref','na_ref_other')},{label:'เวรนิเทศ',value:s.supervise||''}].filter(r=>r.value);}
+function exportExcel(){const date=document.getElementById('global-date').value;const shift=document.getElementById('global-shift').value;const wb=XLSX.utils.book_new();const sd=[['รายงานส่งเวรห้องฉุกเฉิน — โรงพยาบาลยางชุมน้อย'],['วันที่',date,'เวร',shift],['บันทึกโดย',CU?.fullname||''],['ส่งออกเมื่อ',new Date().toLocaleString('th-TH')],[],['ยอดผู้ป่วย ER',parseInt(document.getElementById('stat-er').textContent)],['ยอดผู้ป่วย EMS',parseInt(document.getElementById('stat-ems').textContent)],['Admit',parseInt(document.getElementById('stat-admit').textContent)],['Refer',parseInt(document.getElementById('stat-refer').textContent)]];const sr=buildStaffRows();if(sr.length){sd.push([]);sd.push(['ผู้ปฏิบัติงาน']);sr.forEach(r=>sd.push([r.label,r.value]));}const ws1=XLSX.utils.aoa_to_sheet(sd);ws1['!cols']=[{wch:28},{wch:40}];XLSX.utils.book_append_sheet(wb,ws1,'สรุปยอด');const eH=['ประเภท','Trauma','Non-Trauma','รวม'];const eR=TRIAGE.er.map(t=>{const d=ST.er[t.key];return[t.label,d.trauma,d.nontrauma,d.trauma+d.nontrauma];});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([eH,...eR]),'ER');const emH=['ประเภท','T','N','ALS','BLS','FR','รวม'];const emR=TRIAGE.ems.map(t=>{const d=ST.ems[t.key];return[t.label,d.trauma,d.nontrauma,d.als,d.bls,d.fr,Math.max(d.trauma+d.nontrauma,d.als+d.bls+d.fr)];});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([emH,...emR]),'EMS');const pH=['HN','เพศ','วินิจฉัย','สถานะ','LAB/วิกฤต','แผนรักษา','หมายเหตุ'];const pR=ST.patients.map(p=>[p.hn,p.gender,p.dx,p.status,p.abnormal||'',p.todo||'',p.remark||'']);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(pR.length?[pH,...pR]:[pH,['(ไม่มีข้อมูล)']]),'ผู้ป่วย Handover');XLSX.writeFile(wb,`ER_Handover_${date}_${shift.replace(/\s/g,'')}.xlsx`);}
+function exportMonthlyExcel(){const f=getFiltered();if(!f.length){alert('ไม่พบข้อมูล');return;}const yr=document.getElementById('filter-year').value;const mo=document.getElementById('filter-month').value;const lbl=mo==='all'?(yr==='all'?'ทั้งหมด':`ปี${yr}`):`${yr}-${mo}`;const wb=XLSX.utils.book_new();const h=['วันที่','เวร','เวลาบันทึก','ER','EMS','Admit','Refer','ส่งเวร','รวม','บันทึกโดย'];const rows=f.map(h=>[h.date,h.shiftLabel||h.shift,h.ts,parseInt(h.stats?.er)||0,parseInt(h.stats?.ems)||0,parseInt(h.stats?.admit)||0,parseInt(h.stats?.refer)||0,h.patients?.length||0,(parseInt(h.stats?.er)||0)+(parseInt(h.stats?.ems)||0),h.loggedByFullname||'']);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([h,...rows]),'สรุปรายเวร');XLSX.writeFile(wb,`ER_Report_${lbl}.xlsx`);}
+
+// ═══════════════════════════════════════
+// PRINT
+// ═══════════════════════════════════════
+function buildReport(entry){
+  const date=entry?entry.date:document.getElementById('global-date').value;const shift=entry?entry.shift:document.getElementById('global-shift').value;const ts=entry?entry.ts:new Date().toLocaleString('th-TH');const logger=entry?.loggedByFullname?`บันทึกโดย: ${entry.loggedByFullname}`:'';
+  const stats=entry?entry.stats:{er:document.getElementById('stat-er').textContent,ems:document.getElementById('stat-ems').textContent,admit:document.getElementById('stat-admit').textContent,refer:document.getElementById('stat-refer').textContent};
+  const patients=entry?entry.patients:ST.patients;const erData=entry?entry.erData:ST.er;const emsData=entry?entry.emsData:ST.ems;
+  const staffRows=entry?(entry.staffDisplay||[]).map(line=>{const m=line.match(/^([\S]+)\s(.+?):\s(.+)$/);return m?{icon:m[1],label:m[2],value:m[3]}:{icon:'👤',label:'',value:line};}):buildStaffRows().map(r=>({icon:'',label:r.label,value:r.value}));
+  const erR=TRIAGE.er.map(t=>{const d=erData[t.key]||{trauma:0,nontrauma:0};return`<tr style="border-bottom:1px solid #e2e8f0"><td style="padding:4px 8px">${t.label}</td><td style="padding:4px 8px;text-align:center">${d.trauma}</td><td style="padding:4px 8px;text-align:center">${d.nontrauma}</td><td style="padding:4px 8px;text-align:center;font-weight:800">${d.trauma+d.nontrauma}</td></tr>`;}).join('');
+  const emsR=TRIAGE.ems.map(t=>{const d=emsData[t.key]||{trauma:0,nontrauma:0,als:0,bls:0,fr:0};const rt=Math.max(d.trauma+d.nontrauma,d.als+d.bls+d.fr);return`<tr style="border-bottom:1px solid #e2e8f0"><td style="padding:4px 8px">${t.label}</td><td style="padding:4px 8px;text-align:center">${d.trauma}</td><td style="padding:4px 8px;text-align:center">${d.nontrauma}</td><td style="padding:4px 8px;text-align:center">${d.als}</td><td style="padding:4px 8px;text-align:center">${d.bls}</td><td style="padding:4px 8px;text-align:center">${d.fr}</td><td style="padding:4px 8px;text-align:center;font-weight:800">${rt}</td></tr>`;}).join('');
+  const pR=patients.map(p=>`<tr style="border-bottom:1px solid #e2e8f0"><td style="padding:4px 8px;font-weight:800">${p.hn}</td><td style="padding:4px 8px">${p.gender}</td><td style="padding:4px 8px;font-weight:700">${p.dx}</td><td style="padding:4px 8px">${p.status}</td><td style="padding:4px 8px;color:#dc2626">${p.abnormal||'—'}</td><td style="padding:4px 8px;color:#1d4ed8">${p.todo||'—'}</td><td style="padding:4px 8px;color:#dc2626;font-weight:800">${p.remark||'—'}</td></tr>`).join('');
+  const sHTML=staffRows.length?`<div style="margin-bottom:20px;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden"><div style="background:#0369a1;color:white;padding:8px 14px;font-weight:900">👥 ผู้ปฏิบัติงานประจำเวร (${staffRows.length} ท่าน)</div><div style="padding:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px">${staffRows.map(r=>`<div style="display:flex;align-items:flex-start;gap:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px"><div><div style="font-size:8pt;font-weight:900;color:#94a3b8;text-transform:uppercase;">${r.label}</div><div style="font-size:10pt;font-weight:700;color:#1e293b;margin-top:2px;">${r.value}</div></div></div>`).join('')}</div></div>`:'';
+  return`<div style="font-family:'Sarabun',sans-serif;padding:24px;max-width:900px;margin:0 auto;color:#1e293b"><div style="text-align:center;margin-bottom:20px;border-bottom:3px solid #0369a1;padding-bottom:16px"><h1 style="font-size:20pt;font-weight:900;color:#0369a1;margin:0">รายงานส่งเวรห้องฉุกเฉิน</h1><h2 style="font-size:13pt;font-weight:700;color:#475569;margin:4px 0">โรงพยาบาลยางชุมน้อย</h2><p style="margin:4px 0;font-weight:800;font-size:12pt">📅 ${date} &nbsp;|&nbsp; 🕒 ${shift}</p><p style="font-size:9pt;color:#94a3b8;margin:4px 0">พิมพ์เมื่อ: ${ts}${logger?` &nbsp;|&nbsp; 📝 ${logger}`:''}</p></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"><div style="background:#eff6ff;border:2px solid #bfdbfe;border-radius:12px;padding:12px;text-align:center"><div style="font-size:8pt;font-weight:900;color:#2563eb">ER</div><div style="font-size:24pt;font-weight:900;color:#1d4ed8">${stats.er}</div></div><div style="background:#f0fdf4;border:2px solid #bbf7d0;border-radius:12px;padding:12px;text-align:center"><div style="font-size:8pt;font-weight:900;color:#16a34a">EMS</div><div style="font-size:24pt;font-weight:900;color:#15803d">${stats.ems}</div></div><div style="background:#eef2ff;border:2px solid #c7d2fe;border-radius:12px;padding:12px;text-align:center"><div style="font-size:8pt;font-weight:900;color:#4338ca">Admit</div><div style="font-size:24pt;font-weight:900;color:#4338ca">${stats.admit}</div></div><div style="background:#fff7ed;border:2px solid #fed7aa;border-radius:12px;padding:12px;text-align:center"><div style="font-size:8pt;font-weight:900;color:#c2410c">Refer</div><div style="font-size:24pt;font-weight:900;color:#c2410c">${stats.refer}</div></div></div>${sHTML}<div style="margin-bottom:20px;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden"><div style="background:#1d4ed8;color:white;padding:8px 14px;font-weight:900">🏥 สรุปผู้ป่วย Walk-in (ER)</div><table style="width:100%;border-collapse:collapse;font-size:10pt"><thead style="background:#f1f5f9"><tr style="font-weight:900;font-size:9pt;color:#64748b"><th style="padding:6px 8px;text-align:left;border-bottom:1.5px solid #e2e8f0">ประเภท</th><th style="padding:6px 8px;text-align:center;border-bottom:1.5px solid #e2e8f0">T</th><th style="padding:6px 8px;text-align:center;border-bottom:1.5px solid #e2e8f0">N</th><th style="padding:6px 8px;text-align:center;border-bottom:1.5px solid #e2e8f0">รวม</th></tr></thead><tbody>${erR}</tbody></table></div><div style="margin-bottom:20px;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden"><div style="background:#15803d;color:white;padding:8px 14px;font-weight:900">🚑 สถิติผู้ป่วย EMS</div><table style="width:100%;border-collapse:collapse;font-size:10pt"><thead style="background:#f1f5f9"><tr style="font-weight:900;font-size:9pt;color:#64748b"><th style="padding:6px 8px;text-align:left;border-bottom:1.5px solid #e2e8f0">ประเภท</th><th style="padding:6px 8px;text-align:center;border-bottom:1.5px solid #e2e8f0">T</th><th style="padding:6px 8px;text-align:center;border-bottom:1.5px solid #e2e8f0">N</th><th style="padding:6px 8px;text-align:center;border-bottom:1.5px solid #e2e8f0">ALS</th><th style="padding:6px 8px;text-align:center;border-bottom:1.5px solid #e2e8f0">BLS</th><th style="padding:6px 8px;text-align:center;border-bottom:1.5px solid #e2e8f0">FR</th><th style="padding:6px 8px;text-align:center;border-bottom:1.5px solid #e2e8f0">รวม</th></tr></thead><tbody>${emsR}</tbody></table></div>${patients.length?`<div style="border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden"><div style="background:#7c3aed;color:white;padding:8px 14px;font-weight:900">📋 ผู้ป่วยส่งเวร (${patients.length} ราย)</div><table style="width:100%;border-collapse:collapse;font-size:9.5pt"><thead style="background:#f1f5f9"><tr style="font-weight:900;font-size:8pt;color:#64748b"><th style="padding:5px 8px;text-align:left;border-bottom:1.5px solid #e2e8f0">HN</th><th style="padding:5px 8px;text-align:center;border-bottom:1.5px solid #e2e8f0">เพศ</th><th style="padding:5px 8px;text-align:left;border-bottom:1.5px solid #e2e8f0">วินิจฉัย</th><th style="padding:5px 8px;text-align:center;border-bottom:1.5px solid #e2e8f0">สถานะ</th><th style="padding:5px 8px;text-align:left;border-bottom:1.5px solid #e2e8f0">LAB/วิกฤต</th><th style="padding:5px 8px;text-align:left;border-bottom:1.5px solid #e2e8f0">แผนรักษา</th><th style="padding:5px 8px;text-align:left;border-bottom:1.5px solid #e2e8f0">หมายเหตุ</th></tr></thead><tbody>${pR}</tbody></table></div>`:''}<div style="margin-top:24px;text-align:center;font-size:9pt;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px">ระบบรับ-ส่งเวรห้องฉุกเฉิน โรงพยาบาลยางชุมน้อย — ${new Date().toLocaleString('th-TH')}</div></div>`;
+}
+function printIF(html){const old=document.getElementById('pf');if(old)old.remove();const f=document.createElement('iframe');f.id='pf';f.style.cssText='position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';document.body.appendChild(f);const d=f.contentWindow.document;d.open();d.write(`<!doctype html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet"><style>@media print{body{margin:0;}}*{font-family:'Sarabun',sans-serif;}</style></head><body>${html}</body></html>`);d.close();setTimeout(()=>{f.contentWindow.focus();f.contentWindow.print();setTimeout(()=>f.remove(),2000);},800);}
+function printReport(){printIF(buildReport(null));}
+function printHistoryEntry(id){const e=ST.history.find(h=>h.id===id);if(!e)return;printIF(buildReport(e));}
+
+// NAV initial
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('.nav-btn').forEach(b=>{b.classList.add('border-transparent','text-slate-500');});
+  const d=document.getElementById('nav-dashboard');if(d){d.classList.add('border-blue-600','text-blue-700','font-extrabold');d.classList.remove('border-transparent','text-slate-500');}
+});
+</script>
+</body>
+</html>
